@@ -2,6 +2,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+from django.core.cache import cache
 from django.db.models import Count, Q
 from .models import Project, WorkerGroup, Worker
 from .serializers import (
@@ -99,6 +100,47 @@ class WorkerViewSet(viewsets.ModelViewSet):
         if self.action == "retrieve":
             return WorkerDetailSerializer
         return WorkerWriteSerializer
+
+    def get_queryset(self):
+        # 仅对 list 动作启用 queryset 级别缓存
+        if self.action != 'list':
+            return Worker.objects.select_related("group").all()
+
+        user = self.request.user
+        status_filter = self.request.query_params.get('status', '')
+        work_type = self.request.query_params.get('work_type', '')
+        group = self.request.query_params.get('group', '')
+        search = self.request.query_params.get('search', '')
+        ordering = self.request.query_params.get('ordering', '-created_at')
+
+        # 缓存 key: workers_worker_{user_id}_{status}_{work_type}_{group}_{search}_{ordering}
+        cache_key = f"workers_worker_{user.id}_{status_filter}_{work_type}_{group}_{search}_{ordering}"
+        cached_ids = cache.get(cache_key)
+
+        if cached_ids is not None:
+            # 从缓存的 ID 列表重建 queryset
+            return Worker.objects.select_related("group").filter(id__in=cached_ids)
+
+        # 缓存未命中，查询并缓存 IDs
+        queryset = Worker.objects.select_related("group").all()
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if work_type:
+            queryset = queryset.filter(work_type=work_type)
+        if group:
+            queryset = queryset.filter(group_id=group)
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) | Q(id_card__icontains=search) | Q(phone__icontains=search)
+            )
+        if ordering:
+            queryset = queryset.order_by(ordering)
+
+        # 缓存 IDs 列表，最多 1000 条
+        ids = list(queryset.values_list('id', flat=True)[:1000])
+        cache.set(cache_key, ids, 60 * 5)
+
+        return Worker.objects.select_related("group").filter(id__in=ids)
 
     # ---------- 自定义动作 ----------
 

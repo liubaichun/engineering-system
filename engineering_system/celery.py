@@ -12,7 +12,7 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
 # Load task modules from installed apps
-app.autodiscover_tasks(['approvals'])
+app.autodiscover_tasks(['approvals', 'tasks'])
 
 # Celery Beat schedule
 app.conf.beat_schedule = {
@@ -27,5 +27,9 @@ app.conf.beat_schedule = {
     'check-project-budget-weekly': {
         'task': 'approvals.tasks.check_project_budget_warning',
         'schedule': crontab(hour=9, minute=0, day_of_week=1),
+    },
+    'check-task-delay-daily': {
+        'task': 'tasks.tasks.check_task_delay_warning',
+        'schedule': crontab(hour=9, minute=0),
     },
 }
