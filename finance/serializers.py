@@ -94,6 +94,8 @@ class ExpenseSerializer(serializers.ModelSerializer):
     def validate_amount(self, value):
         if value < 0:
             raise serializers.ValidationError('金额不能为负数')
+        if value == 0:
+            raise serializers.ValidationError('金额不能为零')
         return value
 
     def create(self, validated_data):
