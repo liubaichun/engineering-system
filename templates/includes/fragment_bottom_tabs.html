@@ -1,0 +1,43 @@
+
+<style>
+.bottom-tab-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border-top: 1px solid #dee2e6;
+    z-index: 1050;
+    padding: 0;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+}
+@media (max-width: 767.98px) {
+    .bottom-tab-nav { display: flex !important; }
+    body { padding-bottom: 60px !important; }
+    .main-content { margin-left: 0 !important; padding: 12px; padding-top: 60px !important; }
+}
+.bottom-tab-nav .tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 4px;
+    color: #6c757d;
+    text-decoration: none;
+    font-size: 0.65rem;
+    transition: color 0.2s;
+}
+.bottom-tab-nav .tab-item i { font-size: 1.2rem; margin-bottom: 2px; }
+.bottom-tab-nav .tab-item.active,
+.bottom-tab-nav .tab-item:hover { color: #0d6efd; }
+</style>
+
+<nav class="bottom-tab-nav">
+    <a href="/dashboard/" class="tab-item"><i class="bi bi-house"></i><span>首页</span></a>
+    <a href="/projects/" class="tab-item"><i class="bi bi-folder"></i><span>项目</span></a>
+    <a href="/tasks/" class="tab-item"><i class="bi bi-kanban"></i><span>任务</span></a>
+    <a href="/signin/" class="tab-item"><i class="bi bi-qr-code-scan"></i><span>考勤</span></a>
+    <a href="/system/" class="tab-item"><i class="bi bi-person"></i><span>我的</span></a>
+</nav>

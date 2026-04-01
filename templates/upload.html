@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上传文件 - 工程管理系统</title>
+    <link href="/static/local/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/local/css/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+    :root {
+        --color-primary: #0d6efd;
+        --color-primary-dark: #0b5ed7;
+        --color-primary-bg: #e7f1ff;
+        --sidebar-bg: #1a1a2e;
+        --page-bg: #f0f2f5;
+        --card-bg: #ffffff;
+        --card-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        --card-radius: 12px;
+        --color-success: #198754;
+        --color-warning: #ffc107;
+        --color-danger: #dc3545;
+        --text-secondary: #6c757d;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        background: var(--page-bg);
+    }
+
+    .upload-container {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+    @media (max-width: 767px) {
+        .upload-container { padding: 12px; }
+    }
+
+    /* Upload drop zone */
+    .drop-zone {
+        border: 2px dashed #dee2e6;
+        border-radius: var(--card-radius);
+        padding: 48px 24px;
+        text-align: center;
+        background: #fff;
+        cursor: pointer;
+        transition: all 0.3s;
+        position: relative;
+    }
+    .drop-zone:hover,
+    .drop-zone.dragover {
+        border-color: var(--color-primary);
+        background: var(--color-primary-bg);
+    }
+    .drop-zone-icon {
+        font-size: 4rem;
+        color: var(--color-primary);
+        opacity: 0.7;
+        margin-bottom: 16px;
+    }
+    .drop-zone h5 { color: #212529; margin-bottom: 8px; }
+    .drop-zone p { color: var(--text-secondary); font-size: 0.85rem; }
+    .drop-zone .browse-link {
+        color: var(--color-primary);
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .drop-zone input[type="file"] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    /* File type icons */
+    .file-type-btns {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 16px;
+        flex-wrap: wrap;
+    }
+    .file-type-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 10px 16px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        transition: all 0.2s;
+    }
+    .file-type-btn:hover, .file-type-btn.active {
+        border-color: var(--color-primary);
+        color: var(--color-primary);
+        background: var(--color-primary-bg);
+    }
+    .file-type-btn i { font-size: 1.5rem; }
+
+    /* File preview list */
+    .upload-queue {
+        margin-top: 24px;
+    }
+    .upload-item {
+        background: #fff;
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+        padding: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .upload-item-thumb {
+        width: 56px;
+        height: 56px;
+        border-radius: 8px;
+        background: #f8f9fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+    .upload-item-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .upload-item-info { flex: 1; min-width: 0; }
+    .upload-item-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 4px;
+    }
+    .upload-item-meta {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+    .upload-item-progress {
+        margin-top: 6px;
+    }
+    .progress {
+        height: 6px;
+        border-radius: 3px;
+        background: #e9ecef;
+    }
+    .progress-bar {
+        border-radius: 3px;
+        transition: width 0.3s;
+    }
+    .upload-item-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+        font-size: 0.75rem;
+    }
+    .upload-item-status.success { color: var(--color-success); }
+    .upload-item-status.error { color: var(--color-danger); }
+
+    /* Form fields */
+    .upload-form {
+        margin-top: 24px;
+        background: #fff;
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+        padding: 24px;
+    }
+    .form-label {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #212529;
+        margin-bottom: 6px;
+    }
+    .form-select, .form-control {
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        padding: 10px 14px;
+        font-size: 0.9rem;
+    }
+    .form-select:focus, .form-control:focus {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(13,110,253,0.15);
+    }
+    .form-hint {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    /* Action buttons */
+    .btn-primary {
+        background: var(--color-primary);
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-weight: 600;
+        width: 100%;
+        margin-top: 20px;
+    }
+    .btn-primary:hover { background: var(--color-primary-dark); }
+    .btn-primary:disabled { background: #adb5bd; cursor: not-allowed; }
+
+    /* Mobile */
+    @media (max-width: 767px) {
+        .main-content { margin-left: 0 !important; padding: 12px; padding-top: 60px; }
+        .drop-zone { padding: 32px 16px; }
+        .drop-zone-icon { font-size: 3rem; }
+    }
+
+    /* Bottom nav */
+    .bottom-tab-nav {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border-top: 1px solid #dee2e6;
+        z-index: 1050;
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+    }
+    @media (max-width: 767px) {
+        .bottom-tab-nav { display: flex !important; }
+        body { padding-bottom: 60px !important; }
+    }
+    .bottom-tab-nav .tab-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 4px;
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 0.65rem;
+    }
+    .bottom-tab-nav .tab-item i { font-size: 1.2rem; margin-bottom: 2px; }
+    .bottom-tab-nav .tab-item.active,
+    .bottom-tab-nav .tab-item:hover { color: var(--color-primary); }
+
+    /* Mobile top bar */
+    .mobile-topbar {
+        display: none;
+        background: var(--sidebar-bg);
+        color: #fff;
+        padding: 10px 16px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1040;
+    }
+    @media (max-width: 767px) {
+        .mobile-topbar { display: flex; align-items: center; justify-content: space-between; }
+    }
+
+    /* Remove button */
+    .btn-remove {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 1.2rem;
+    }
+    .btn-remove:hover { color: var(--color-danger); }
+
+    /* Camera button */
+    .btn-camera {
+        background: var(--color-primary);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .btn-camera:hover { background: var(--color-primary-dark); }
+
+    /* Voice note */
+    .voice-note-btn {
+        border: 1px dashed #dee2e6;
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .voice-note-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+    .voice-note-btn.recording {
+        border-color: var(--color-danger);
+        color: var(--color-danger);
+        background: #fff5f5;
+    }
+    </style>
+</head>
+<body>
+
+<div class="mobile-topbar">
+    <a href="/files/" style="color:#fff;"><i class="bi bi-arrow-left"></i></a>
+    <span>上传文件</span>
+    <span style="width:40px;"></span>
+</div>
+
+<div class="upload-container">
+    <!-- Page header -->
+    <div class="page-header mb-4">
+        <h4><i class="bi bi-cloud-upload me-2"></i>上传文件</h4>
+    </div>
+
+    <!-- Drop zone -->
+    <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar">
+        <div class="drop-zone-icon">
+            <i class="bi bi-cloud-arrow-up"></i>
+        </div>
+        <h5>拖拽文件到此处</h5>
+        <p>或点击选择文件</p>
+        <p class="mt-2">
+            <span class="browse-link">从相册选择</span> · 支持图片/PDF/Word/Excel
+        </p>
+        <div class="file-type-btns">
+            <div class="file-type-btn" onclick="document.getElementById('fileInput').click()">
+                <i class="bi bi-image"></i>
+                <span>照片</span>
+            </div>
+            <div class="file-type-btn" onclick="document.getElementById('fileInput').click()">
+                <i class="bi bi-file-earmark-pdf"></i>
+                <span>PDF</span>
+            </div>
+            <div class="file-type-btn" onclick="document.getElementById('fileInput').click()">
+                <i class="bi bi-file-earmark-excel"></i>
+                <span>Excel</span>
+            </div>
+            <div class="file-type-btn" onclick="document.getElementById('fileInput').click()">
+                <i class="bi bi-file-earmark-word"></i>
+                <span>Word</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera quick access (mobile) -->
+    <div class="d-lg-none mt-3">
+        <button class="btn-camera w-100" onclick="openCamera()">
+            <i class="bi bi-camera"></i>拍照上传
+        </button>
+    </div>
+
+    <!-- Upload queue -->
+    <div class="upload-queue" id="uploadQueue">
+        <!-- File items will be inserted here by JS -->
+    </div>
+
+    <!-- Upload form -->
+    <div class="upload-form" id="uploadForm">
+        <div class="mb-3">
+            <label class="form-label">关联项目 <span class="text-danger">*</span></label>
+            <select class="form-select" id="projectSelect" required>
+                <option value="">请选择项目</option>
+                <option value="1">宝山数据中心</option>
+                <option value="2">徐汇医院弱电改造</option>
+                <option value="3">浦东机房建设</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">文件分类 <span class="text-danger">*</span></label>
+            <select class="form-select" id="categorySelect" required>
+                <option value="">请选择分类</option>
+                <option value="photo">📷 施工照片</option>
+                <option value="drawing">📐 施工图纸</option>
+                <option value="contract">📋 合同文件</option>
+                <option value="plan">📝 施工方案</option>
+                <option value="asbuilt">📚 竣工资料</option>
+                <option value="other">📎 其他</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">文件描述</label>
+            <textarea class="form-control" id="fileDesc" rows="2" placeholder="可选：简要描述文件内容"></textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">标签</label>
+            <input type="text" class="form-control" id="fileTags" placeholder="多个标签用逗号分隔，如：配电,机房,宝山">
+            <div class="form-hint">帮助后续快速检索</div>
+        </div>
+
+        <!-- Voice note -->
+        <div class="mb-3">
+            <label class="form-label">语音备注</label>
+            <div class="voice-note-btn" id="voiceBtn" onclick="toggleVoice()">
+                <i class="bi bi-mic"></i>
+                <span id="voiceText">点击添加语音备注</span>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" id="submitBtn" disabled onclick="submitUpload()">
+            <i class="bi bi-cloud-upload me-2"></i>确认上传
+        </button>
+    </div>
+</div>
+
+<!-- Bottom tab nav -->
+<nav class="bottom-tab-nav">
+    <a href="/dashboard/" class="tab-item"><i class="bi bi-house"></i><span>首页</span></a>
+    <a href="/projects/" class="tab-item"><i class="bi bi-folder"></i><span>项目</span></a>
+    <a href="/files/" class="tab-item active"><i class="bi bi-file-earmark"></i><span>文件</span></a>
+    <a href="/tasks/" class="tab-item"><i class="bi bi-kanban"></i><span>任务</span></a>
+    <a href="/system/" class="tab-item"><i class="bi bi-person"></i><span>我的</span></a>
+</nav>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const queue = document.getElementById('uploadQueue');
+const submitBtn = document.getElementById('submitBtn');
+let files = [];
+
+// Drag and drop
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+});
+
+fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+function handleFiles(filesList) {
+    Array.from(filesList).forEach(file => {
+        if (!files.find(f => f.name === file.name)) {
+            files.push(file);
+            addToQueue(file);
+        }
+    });
+    validateForm();
+}
+
+function addToQueue(file) {
+    const id = 'file_' + Date.now() + Math.random().toString(36).substr(2, 5);
+    const isImage = file.type.startsWith('image/');
+    const icon = getFileIcon(file.type);
+    const size = formatSize(file.size);
+
+    const html = `
+    <div class="upload-item" id="${id}">
+        <div class="upload-item-thumb">
+            ${isImage ? `<img src="" data-file="${file.name}" style="display:none">${icon}` : icon}
+        </div>
+        <div class="upload-item-info">
+            <div class="upload-item-name">${file.name}</div>
+            <div class="upload-item-meta">${size}</div>
+            <div class="upload-item-progress">
+                <div class="progress">
+                    <div class="progress-bar bg-primary" style="width:0%"></div>
+                </div>
+            </div>
+            <div class="upload-item-status" id="${id}_status"></div>
+        </div>
+        <button class="btn-remove" onclick="removeFile('${id}', '${file.name}')">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>`;
+    queue.insertAdjacentHTML('beforeend', html);
+
+    // Load image preview
+    if (isImage) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = document.querySelector(`#${id} img[data-file="${file.name}"]`);
+            if (img) { img.src = e.target.result; img.style.display = 'block'; img.nextElementSibling.style.display = 'none'; }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Simulate upload progress
+    simulateUpload(id);
+}
+
+function getFileIcon(type) {
+    if (type.includes('pdf')) return '<i class="bi bi-file-earmark-pdf-fill text-danger"></i>';
+    if (type.includes('excel') || type.includes('spreadsheet')) return '<i class="bi bi-file-earmark-excel-fill text-success"></i>';
+    if (type.includes('word') || type.includes('document')) return '<i class="bi bi-file-earmark-word-fill text-primary"></i>';
+    if (type.includes('image')) return '<i class="bi bi-image text-info"></i>';
+    if (type.includes('zip') || type.includes('rar')) return '<i class="bi bi-file-earmark-zip-fill text-secondary"></i>';
+    return '<i class="bi bi-file-earmark text-secondary"></i>';
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function simulateUpload(id) {
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+            document.getElementById(id + '_status').innerHTML = '<i class="bi bi-check-circle-fill"></i> 上传成功';
+            document.getElementById(id + '_status').className = 'upload-item-status success';
+        }
+        document.querySelector(`#${id} .progress-bar`).style.width = progress + '%';
+    }, 200);
+}
+
+function removeFile(id, name) {
+    document.getElementById(id).remove();
+    files = files.filter(f => f.name !== name);
+    validateForm();
+}
+
+function validateForm() {
+    const hasFiles = files.length > 0;
+    const hasProject = document.getElementById('projectSelect').value !== '';
+    const hasCategory = document.getElementById('categorySelect').value !== '';
+    submitBtn.disabled = !(hasFiles && hasProject && hasCategory);
+}
+
+['projectSelect', 'categorySelect'].forEach(id => {
+    document.getElementById(id).addEventListener('change', validateForm);
+});
+
+function submitUpload() {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>上传中...';
+    // TODO: actual upload logic
+    setTimeout(() => {
+        submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>上传完成';
+        submitBtn.classList.remove('btn-primary');
+        submitBtn.classList.add('btn-success');
+    }, 1500);
+}
+
+function toggleVoice() {
+    const btn = document.getElementById('voiceBtn');
+    const text = document.getElementById('voiceText');
+    btn.classList.toggle('recording');
+    if (btn.classList.contains('recording')) {
+        text.textContent = '录音中... 点击停止';
+    } else {
+        text.textContent = '点击添加语音备注';
+    }
+}
+
+function openCamera() {
+    // TODO: open device camera
+    fileInput.click();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>控制台 - 工程管理系统</title>
+    <link href="/static/local/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/local/css/bootstrap-icons.min.css" rel="stylesheet">
+        <style>
+        /* ============================================
+           CSS ROOT VARIABLES - Global Color System
+           ============================================ */
+        :root {
+            /* Primary Colors */
+            --color-primary: #0d6efd;
+            --color-primary-dark: #0b5ed7;
+            --color-primary-light: #d0e8ff;
+            --color-primary-bg: #e7f1ff;
+
+            /* Sidebar */
+            --sidebar-bg: #1a1a2e;
+            --sidebar-hover: #16213e;
+            --sidebar-text: #b8bcd4;
+            --sidebar-text-active: #ffffff;
+            --sidebar-width: 240px;
+
+            /* Page & Card */
+            --page-bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --card-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --card-radius: 12px;
+
+            /* Status Colors */
+            --color-success: #198754;
+            --color-warning: #ffc107;
+            --color-danger: #dc3545;
+            --color-info: #0dcaf0;
+            --color-purple: #6f42c1;
+            --color-pink: #e91e63;
+
+            /* Progress Gradient */
+            --progress-low: #dc3545;
+            --progress-mid: #ffc107;
+            --progress-high: #198754;
+
+            /* Text */
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --text-muted: #adb5bd;
+
+            /* Timeline Dot Colors */
+            --dot-project: #0d6efd;
+            --dot-task: #198754;
+            --dot-finance: #fd7e14;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.15);
+
+            /* Stat Icon Backgrounds */
+            --icon-project-bg: #d0e8ff;
+            --icon-task-bg: #fff3e0;
+            --icon-finance-bg: #e8f5e9;
+            --icon-user-bg: #f3e5f5;
+        }
+
+        /* ============================================
+           BASE STYLES
+           ============================================ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--page-bg);
+            overflow-x: hidden;
+        }
+
+        /* ============================================
+           SIDEBAR
+           ============================================ */
+        nav.sidebar {
+            position: fixed; top: 0; left: 0; width: var(--sidebar-width);
+            height: 100vh; background: var(--sidebar-bg); z-index: 100; overflow-y: auto;
+            display: flex; flex-direction: column;
+        }
+        .sidebar-brand {
+            padding: 16px 20px; color: #fff; font-size: 1rem; font-weight: 700;
+            border-bottom: 1px solid #2a2a4a; margin-bottom: 8px;
+        }
+        nav.sidebar .nav { flex: 1; }
+        nav.sidebar .nav-link {
+            color: var(--sidebar-text); padding: 10px 16px; border-radius: 8px; margin: 2px 8px;
+            font-size: 0.9rem; display: flex; align-items: center; text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        nav.sidebar .nav-link:hover { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        nav.sidebar .nav-link.active { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        nav.sidebar .nav-link i { width: 20px; margin-right: 8px; }
+        nav.sidebar .mt-auto { border-top: 1px solid #2a2a4a; padding: 12px; }
+
+        /* Offcanvas mobile sidebar - explicit styles */
+        #mobileSidebar { visibility: visible !important; background: #1a1a2e !important; z-index: 1060 !important; }
+        #mobileSidebar.offcanvas { width: 240px !important; }
+        #mobileSidebar .nav-link { color: #b8bcd4 !important; padding: 10px 16px !important; display: flex !important; align-items: center !important; }
+        #mobileSidebar .nav-link:hover { background: #16213e !important; color: #ffffff !important; }
+        #mobileSidebar .nav-link i { width: 20px; margin-right: 8px; }
+        #mobileSidebar .offcanvas-header { background: #1a1a2e !important; border-bottom: 1px solid #2a2a4a !important; }
+        #mobileSidebar .offcanvas-body { background: #1a1a2e !important; padding: 12px 0 !important; }
+        #mobileSidebar .mt-auto { background: #1a1a2e !important; border-top: 1px solid #2a2a4a !important; padding: 12px !important; }
+
+        /* Main content */
+        .main-content { margin-left: var(--sidebar-width); padding: 24px; min-height: 100vh; }
+
+        /* ============================================
+           RESPONSIVE BREAKPOINTS
+           ============================================ */
+        /* Mobile (< 768px) */
+        @media (max-width: 767.98px) {
+            .main-content { margin-left: 0 !important; padding: 12px; padding-top: 60px; }
+            nav.sidebar { display: none; }
+            .stat-card { padding: 12px !important; flex: 0 0 calc(50% - 8px) !important; }
+            .stat-value { font-size: 1.4rem !important; }
+            .page-header h4 { font-size: 1.2rem; }
+            .card-body { padding: 12px; }
+            .table { font-size: 0.8rem; }
+            .quick-action { padding: 12px; }
+            .activity-card { padding: 12px; }
+            .action-icon { width: 36px; height: 36px; font-size: 1rem; }
+            .action-text { font-size: 0.68rem; }
+            .progress-item { padding: 10px; }
+            .timeline-item { padding: 6px 0 6px 14px; }
+            .timeline-item::before { top: 12px; width: 7px; height: 7px; }
+            .stat-icon { width: 40px; height: 40px; font-size: 1.1rem; }
+            .stat-label { font-size: 0.75rem; }
+            .sub-stat { font-size: 0.72rem; }
+        }
+
+        /* Tablet (768px - 991.98px) */
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .main-content { margin-left: 0 !important; padding: 16px; }
+            nav.sidebar { display: none; }
+            .quick-action { padding: 14px; }
+            .activity-card { padding: 14px; }
+        }
+
+        /* Desktop (>= 992px) - hide mobile offcanvas toggle */
+        @media (min-width: 992px) {
+            /* offcanvas controlled by Bootstrap JS */
+            nav.d-lg-none { display: none !important; }
+        }
+
+        /* Large desktop (>= 1200px) */
+        @media (min-width: 1200px) {
+            .main-content { padding: 32px 40px; }
+            .container-fluid { max-width: 1400px; }
+        }
+
+        /* Hide desktop sidebar on mobile/tablet */
+        @media (max-width: 991.98px) {
+            nav.sidebar { display: none; }
+            .main-content { margin-left: 0 !important; }
+        }
+
+        /* ============================================
+           CARDS & PAGE HEADER
+           ============================================ */
+        .card { border: none; border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
+        .page-header { margin-bottom: 24px; }
+        .page-header h4 { font-weight: 700; color: var(--sidebar-bg); }
+
+        /* ============================================
+           MOBILE FORM & BUTTON TOUCH TARGETS
+           ============================================ */
+        @media (max-width: 575.98px) {
+            .modal .row.g-3 [class*="col-"] { margin-bottom: 8px; }
+            .modal .row.g-3 { margin-left: 0; margin-right: 0; }
+            .modal .row.g-3 > div { padding-left: 0; padding-right: 0; }
+        }
+        @media (max-width: 767.98px) {
+            .btn { min-height: 44px; padding: 10px 16px; font-size: 0.9rem; }
+            .btn-sm { min-height: 36px; padding: 6px 12px; font-size: 0.8rem; }
+            .btn-lg { min-height: 52px; padding: 14px 24px; font-size: 1rem; }
+            .page-header .d-flex { flex-direction: column; align-items: stretch !important; gap: 8px; }
+            .page-header .d-flex.gap-2 { gap: 8px !important; }
+            .page-header .btn { width: 100%; justify-content: center; }
+            .card-body.py-2.d-flex { flex-direction: column; align-items: stretch !important; gap: 8px; }
+            .card-body.py-2.d-flex .form-select, .card-body.py-2.d-flex .form-control { width: 100%; max-width: 100% !important; }
+            .table { font-size: 0.85rem; }
+            .table td, .table th { padding: 8px 10px; }
+            .table .btn-sm { padding: 4px 8px; min-height: 28px; min-width: 28px; }
+            .modal-dialog { margin: 0; max-width: 100%; }
+            .modal-content { border-radius: 0; min-height: 100vh; }
+            .modal-header, .modal-body, .modal-footer { padding: 16px 20px; }
+            .modal-footer { flex-direction: column; }
+            .modal-footer .btn { width: 100%; margin-bottom: 8px; }
+            .form-label { font-size: 0.9rem; margin-bottom: 4px; }
+            .form-control, .form-select { min-height: 44px; font-size: 16px; padding: 10px 12px; }
+            textarea.form-control { min-height: 100px; }
+            .card { border-radius: 8px; margin-left: -10px; margin-right: -10px; }
+            .actions-bar { flex-direction: column; gap: 8px; }
+            .actions-bar > * { width: 100%; }
+        }
+        @media (max-width: 767.98px) {
+            /* Prevent iOS zoom on inputs */
+            input, select, textarea { font-size: 16px !important; }
+        }
+
+        /* ============================================
+           BUTTONS
+           ============================================ */
+        .btn { transition: all 0.2s ease; border-radius: 8px; }
+        .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+        .btn-primary { background-color: var(--color-primary); border-color: var(--color-primary); }
+        .btn-primary:hover { background-color: var(--color-primary-dark); border-color: var(--color-primary-dark); box-shadow: 0 4px 12px rgba(13,110,253,0.35); }
+        .btn-success { background-color: var(--color-success); border-color: var(--color-success); }
+        .btn-danger { background-color: var(--color-danger); border-color: var(--color-danger); }
+        .btn-warning { background-color: var(--color-warning); border-color: var(--color-warning); color: #000; }
+        .btn-outline-secondary { color: var(--sidebar-text); border-color: var(--sidebar-text); border-radius: 8px; }
+        .btn-outline-secondary:hover { background: var(--sidebar-hover); color: #fff; border-color: var(--sidebar-hover); }
+
+        /* ============================================
+           FORM ELEMENTS
+           ============================================ */
+        .form-control, .form-select {
+            border-radius: 8px;
+            border-color: #dee2e6;
+            box-shadow: var(--shadow-sm);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(13,110,253,0.15);
+        }
+        .form-label { font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
+
+        /* ============================================
+           TEXT UTILITIES
+           ============================================ */
+        .text-primary { color: var(--color-primary) !important; }
+        .text-success { color: var(--color-success) !important; }
+        .text-danger { color: var(--color-danger) !important; }
+        .text-warning { color: var(--color-warning) !important; }
+        .text-info { color: var(--color-info) !important; }
+        .text-muted { color: var(--text-muted) !important; }
+
+        /* ============================================
+           BADGES & ALERTS
+           ============================================ */
+        .badge { border-radius: 6px; font-weight: 500; }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .badge-approved { background: #d1e7dd; color: #0f5132; }
+        .badge-rejected { background: #f8d7da; color: #842029; }
+
+        /* ============================================
+           TABLE STYLES
+           ============================================ */
+        .table { background: var(--card-bg); border-radius: var(--card-radius); overflow: hidden; }
+        .table thead th { background: var(--color-primary-bg); color: var(--color-primary-dark); font-weight: 600; border: none; }
+        .table tbody tr:hover { background: var(--color-primary-bg); }
+        .table td { vertical-align: middle; }
+        /* Table horizontal scroll */
+        .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        /* ============================================
+           STAT CARDS (for dashboard)
+           ============================================ */
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow);
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; margin-bottom: 12px;
+        }
+        .stat-icon.project { background: var(--icon-project-bg); }
+        .stat-icon.task { background: var(--icon-task-bg); }
+        .stat-icon.finance { background: var(--icon-finance-bg); }
+        .stat-icon.user { background: var(--icon-user-bg); }
+        .stat-value { font-size: 1.8rem; font-weight: 700; line-height: 1.2; }
+        .stat-label { color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; }
+        .sub-stat {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-top: 8px; margin-top: 8px; border-top: 1px solid #f0f0f0;
+            font-size: 0.8rem; color: var(--text-secondary);
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .role-badge {
+            font-size: 0.72rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+        .role-badge.role-admin { background: #f8d7da; color: #842029; }
+        .role-badge.role-manager { background: #fff3cd; color: #856404; }
+        .role-badge.role-user { background: #d1e7dd; color: #0f5132; }
+
+        /* User card: role badges row - single line with equal gap */
+        .stat-card:has(.role-badge) > .sub-stat:first-of-type {
+            justify-content: flex-start;
+            gap: 6px;
+        }
+
+        /* ============================================
+           QUICK ACTION CARDS
+           ============================================ */
+        .quick-action {
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow);
+            padding: 16px;
+        }
+        .quick-action h6 {
+            font-weight: 700;
+            color: var(--sidebar-bg);
+            margin-bottom: 12px;
+        }
+        .action-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 6px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            border: 1px solid transparent;
+        }
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+            border-color: #f0f0f0;
+        }
+        .action-icon {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem;
+            margin-bottom: 6px;
+        }
+        .action-text {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        /* ============================================
+           ACTIVITY TIMELINE CARD
+           ============================================ */
+        .activity-card {
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow);
+            padding: 16px;
+        }
+        .activity-card h6 {
+            font-weight: 700;
+            color: var(--sidebar-bg);
+            margin-bottom: 12px;
+        }
+        .timeline { }
+        .timeline-item {
+            display: flex;
+            flex-direction: column;
+            padding: 8px 0;
+            border-bottom: 1px solid #f5f5f5;
+            position: relative;
+            padding-left: 16px;
+        }
+        .timeline-item:last-child { border-bottom: none; }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 14px;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--dot-project);
+        }
+        .timeline-item.dot-project::before { background: var(--dot-project); }
+        .timeline-item.dot-task::before { background: var(--dot-task); }
+        .timeline-item.dot-finance::before { background: var(--dot-finance); }
+        .timeline-item .actor {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+        .timeline-item .action {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-left: 4px;
+        }
+        .timeline-item .time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* ============================================
+           PROGRESS ITEMS
+           ============================================ */
+        .progress-item {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 12px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 8px;
+        }
+        .progress-item .fw-medium { font-weight: 600; color: var(--text-primary); }
+
+        /* ============================================
+           PROGRESS BARS
+           ============================================ */
+        .progress { border-radius: 8px; height: 8px; }
+        .progress-bar { border-radius: 8px; transition: width 0.6s ease; }
+        .progress-bar-gradient.low { background: linear-gradient(90deg, var(--progress-low), #ff6b6b); }
+        .progress-bar-gradient.mid { background: linear-gradient(90deg, var(--progress-mid), #ffd93d); }
+        .progress-bar-gradient.high { background: linear-gradient(90deg, var(--progress-high), #51cf66); }
+
+        /* ============================================
+           MODAL
+           ============================================ */
+        .modal-content { border-radius: var(--card-radius); border: none; box-shadow: var(--shadow-lg); }
+        .modal-header { border-bottom: 1px solid #f0f0f0; border-radius: var(--card-radius) var(--card-radius) 0 0; }
+        .modal-footer { border-top: 1px solid #f0f0f0; }
+        .modal-title { font-weight: 700; color: var(--sidebar-bg); }
+
+        /* ============================================
+           OFFCANVAS HEADER
+           ============================================ */
+        .offcanvas-header { border-bottom: 1px solid #2a2a4a; padding: 16px; }
+
+        /* ============================================
+           SKELETON LOADING
+           ============================================ */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f2f5 25%, #e0e4e8 50%, #f0f2f5 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 4px;
+        }
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ============================================
+           EMPTY STATE
+           ============================================ */
+        .empty-state {
+            text-align: center; padding: 48px 24px; color: var(--text-muted);
+        }
+        .empty-state i { font-size: 3rem; margin-bottom: 12px; opacity: 0.4; }
+        .empty-state p { font-size: 0.9rem; }
+
+        /* Offcanvas fixes */
+        .offcanvas {
+            visibility: visible !important;
+            background: #1a1a2e !important;
+        }
+        .offcanvas.offcanvas-start {
+            width: 240px !important;
+        }
+        .offcanvas .nav-link {
+            color: #b8bcd4 !important;
+            padding: 10px 16px !important;
+        }
+        .offcanvas .nav-link:hover {
+            background: #16213e !important;
+            color: #fff !important;
+        }
+        .offcanvas .btn-close {
+            filter: brightness(0) invert(1);
+        }
+        /* Sidebar section groups */
+        .sidebar-section-header {
+            padding: 8px 20px 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        /* Bottom tab nav */
+        .bottom-tab-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-top: 1px solid #dee2e6;
+            z-index: 1050;
+            padding: 0;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+        }
+        @media (max-width: 767.98px) {
+            .bottom-tab-nav { display: flex !important; }
+            body { padding-bottom: 60px !important; }
+        }
+        .bottom-tab-nav .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 4px;
+            color: #6c757d;
+            text-decoration: none;
+            font-size: 0.65rem;
+            transition: color 0.2s;
+        }
+        .bottom-tab-nav .tab-item i { font-size: 1.2rem; margin-bottom: 2px; }
+        .bottom-tab-nav .tab-item.active { color: #0d6efd; }
+        .bottom-tab-nav .tab-item:hover { color: #0d6efd; }
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toast-msg {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            font-size: 0.9rem;
+            min-width: 240px;
+            max-width: 320px;
+            animation: toastIn 0.3s ease;
+        }
+        .toast-msg.success { border-left: 4px solid #198754; }
+        .toast-msg.error { border-left: 4px solid #dc3545; }
+        .toast-msg.warning { border-left: 4px solid #ffc107; }
+        .toast-msg.info { border-left: 4px solid #0d6efd; }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+    </style>
+
+
+</head>
+<body>
+
+<!-- Desktop and Mobile sidebar -->
+{% include "includes/fragment_sidebar.html" %}
+
+<!-- Main content -->
+<div class="main-content">
+    <!-- Mobile top bar -->
+    <div class="d-flex d-lg-none justify-content-between align-items-center mb-4">
+        <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" style="padding: 8px 12px;">
+            <i class="bi bi-list" style="font-size: 1.2rem;"></i>
+        </button>
+        <span class="fw-bold">控制台</span>
+        <span></span>
+    </div>
+
+    <div class="page-header mb-4">
+        <h4><i class="bi bi-house-door me-2"></i>控制台</h4>
+        <div class="text-muted small mt-1"><i class="bi bi-clock me-1"></i><span id="currentTime"></span></div>
+    </div>
+
+    <!-- 4 Stat Cards -->
+    <div class="row g-3 mb-3">
+        <div class="col-md-3 col-6">
+            <div class="stat-card">
+                <div class="stat-icon project"><i class="bi bi-folder-check text-primary"></i></div>
+                <div class="stat-value text-primary" id="totalProjects">
+                    <span class="skeleton" style="width:48px;height:2rem;display:inline-block;"></span>
+                </div>
+                <div class="stat-label">项目总数</div>
+                <div class="sub-stat">
+                    <span>进行中 <strong class="text-warning" id="activeProjects"><span class="skeleton" style="width:20px;height:1rem;display:inline-block;"></span></strong></span>
+                    <span>已竣工 <strong class="text-success" id="completedProjects"><span class="skeleton" style="width:20px;height:1rem;display:inline-block;"></span></strong></span>
+                </div>
+                <div class="sub-stat" style="border-top:none;padding-top:0;">
+                    <span>本月新开工 <strong class="text-info" id="newProjects"><span class="skeleton" style="width:20px;height:1rem;display:inline-block;"></span></strong></span>
+                    <span>本月竣工 <strong class="text-success" id="closedProjects"><span class="skeleton" style="width:20px;height:1rem;display:inline-block;"></span></strong></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card">
+                <div class="stat-icon task"><i class="bi bi-kanban" style="color:#e65100;"></i></div>
+                <div class="stat-value" style="color:#e65100;" id="totalTasks">
+                    <span class="skeleton" style="width:48px;height:2rem;display:inline-block;"></span>
+                </div>
+                <div class="stat-label">任务总数</div>
+                <div class="sub-stat">
+                    <span>进行中 <strong class="text-primary" id="ongoingTasks"><span class="skeleton" style="width:20px;height:1rem;display:inline-block;"></span></strong></span>
+                    <span>已完成 <strong class="text-success" id="doneTasks"><span class="skeleton" style="width:20px;height:1rem;display:inline-block;"></span></strong></span>
+                </div>
+                <div class="sub-stat" style="border-top:none;padding-top:0;">
+                    <span>超期 <strong class="text-danger" id="overdueTasks"><span class="skeleton" style="width:20px;height:1rem;display:inline-block;"></span></strong></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card">
+                <div class="stat-icon finance"><i class="bi bi-currency-dollar text-success"></i></div>
+                <div class="stat-value text-success" id="monthIncome">
+                    <span class="skeleton" style="width:70px;height:2rem;display:inline-block;"></span>
+                </div>
+                <div class="stat-label">本月收入</div>
+                <div class="sub-stat">
+                    <span>支出 <strong class="text-danger" id="monthExpense"><span class="skeleton" style="width:50px;height:1rem;display:inline-block;"></span></strong></span>
+                    <span>利润 <strong class="text-primary" id="monthProfit"><span class="skeleton" style="width:50px;height:1rem;display:inline-block;"></span></strong></span>
+                </div>
+                <div class="sub-stat" style="border-top:none;padding-top:0;">
+                    <span>利润率 <strong class="text-success" id="profitRate"><span class="skeleton" style="width:40px;height:1rem;display:inline-block;"></span></strong></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card">
+                <div class="stat-icon user"><i class="bi bi-people text-secondary"></i></div>
+                <div class="stat-value text-secondary" id="totalUsers">
+                    <span class="skeleton" style="width:32px;height:2rem;display:inline-block;"></span>
+                </div>
+                <div class="stat-label">用户总数</div>
+                <div class="sub-stat">
+                    <span class="role-badge role-admin" id="adminCount">管理员 -</span>
+                    <span class="role-badge role-manager" id="pmCount">经理 -</span>
+                    <span class="role-badge role-user" id="devCount">成员 -</span>
+                </div>
+                <div class="sub-stat" style="border-top:none;padding-top:4px;">
+                    <span class="text-muted small">活跃TOP3：</span>
+                    <span class="text-primary small" id="topUsers">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions + Activity Timeline -->
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="quick-action">
+                <h6><i class="bi bi-lightning me-2" style="color:var(--color-warning);"></i>快捷操作</h6>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="action-btn" onclick="quickAction('new_project')">
+                            <div class="action-icon" style="background:#e7f1ff;color:#0d6efd;"><i class="bi bi-folder-plus"></i></div>
+                            <span class="action-text">新建项目</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="action-btn" onclick="quickAction('new_task')">
+                            <div class="action-icon" style="background:#fff3e0;color:#e65100;"><i class="bi bi-plus-square"></i></div>
+                            <span class="action-text">新建任务</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="action-btn" onclick="quickAction('new_finance')">
+                            <div class="action-icon" style="background:#e8f5e9;color:#198754;"><i class="bi bi-currency-dollar"></i></div>
+                            <span class="action-text">收支录入</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="action-btn" onclick="quickAction('reconciliation')">
+                            <div class="action-icon" style="background:#f3e5f5;color:#6f42c1;"><i class="bi bi-file-earmark-ruled"></i></div>
+                            <span class="action-text">发起对账</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="action-btn" onclick="quickAction('new_material')">
+                            <div class="action-icon" style="background:#fff8e1;color:#e65100;"><i class="bi bi-box-seam"></i></div>
+                            <span class="action-text">物料入库</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="action-btn" onclick="quickAction('export')">
+                            <div class="action-icon" style="background:#fce4ec;color:#e91e63;"><i class="bi bi-download"></i></div>
+                            <span class="action-text">数据导出</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="activity-card">
+                <h6><i class="bi bi-clock-history me-2" style="color:var(--color-info);"></i>最近操作动态</h6>
+                <div class="timeline" id="activityTimeline">
+                    <div class="empty-state" id="timeline-loading">
+                        <i class="bi bi-arrow-repeat empty-state-icon" style="animation:spin 1.5s linear infinite;"></i>
+                        <p class="empty-state-title">加载中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Projects Progress -->
+    <div class="row g-3 mt-2">
+        <div class="col-12">
+            <div class="quick-action">
+                <h6><i class="bi bi-folder me-2" style="color:var(--color-primary);"></i>进行中项目进度</h6>
+                <div class="row g-3" id="activeProjectsContainer">
+                    <div class="col-12">
+                        <div class="empty-state" id="projects-loading">
+                            <i class="bi bi-arrow-repeat empty-state-icon" style="animation:spin 1.5s linear infinite;"></i>
+                            <p class="empty-state-title">加载中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/static/local/js/bootstrap.bundle.min.js"></script>
+<script>
+function checkAuth() {
+    var token = localStorage.getItem('auth_token');
+    if (!token) { window.location.href = '/login/'; return false; }
+    return true;
+}
+
+function authHeaders() {
+    return { 'Authorization': 'Token ' + localStorage.getItem('auth_token') };
+}
+
+function logout() {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('remember_me');
+    window.location.href = '/login/';
+}
+
+function getCsrfToken() {
+    var el = document.querySelector('[name=csrfmiddlewaretoken]');
+    return el ? el.value : 'mock-csrf-token';
+}
+
+function api(url, method, data) {
+    var options = {
+        method: method || 'GET',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }
+    };
+    if (data && method !== 'GET') options.body = JSON.stringify(data);
+    return fetch(url, options).then(function(r) { return r.json(); }).catch(function() { return { success: false, message: '网络请求失败' }; });
+}
+
+function showToast(message, type) {
+    var container = document.getElementById('toastContainer');
+    var id = 'toast-' + Date.now();
+    var bg = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+    var icon = type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : 'info-circle';
+    var html = '<div id="' + id + '" class="toast align-items-center text-white ' + bg + ' border-0" role="alert" data-bs-delay="3000">' +
+        '<div class="d-flex"><div class="toast-body"><i class="bi bi-' + icon + ' me-2"></i>' + message + '</div>' +
+        '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>';
+    container.innerHTML += html;
+    var el = document.getElementById(id);
+    bootstrap.Toast.getOrCreateInstance(el).show();
+    el.addEventListener('hidden.bs.toast', function() { el.remove(); });
+}
+
+function updateTime() {
+    var now = new Date();
+    var opts = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+    var el = document.getElementById('currentTime');
+    if (el) el.textContent = now.toLocaleString('zh-CN', opts);
+}
+updateTime();
+setInterval(updateTime, 1000);
+
+function quickAction(action) {
+    var routes = {
+        new_project: '/projects/',
+        new_task: '/tasks/',
+        new_finance: '/finance/',
+        reconciliation: '/finance/',
+        new_material: '/materials/',
+        export: '/exports/'
+    };
+    var route = routes[action];
+    if (route) { window.location.href = route; }
+    else { showToast('功能开发中...', 'info'); }
+}
+
+function formatWan(num) {
+    if (!num || isNaN(num)) return '0';
+    num = parseFloat(num);
+    return num >= 10000 ? (num / 10000).toFixed(1) + '万' : num.toFixed(0);
+}
+
+function escHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function loadDashboardStats() {
+    Promise.all([
+        fetch('/api/v1/projects/', { headers: authHeaders() }).then(function(r) { if (r.status === 401) { window.location.href = '/login/'; return []; } if (!r.ok) return []; return r.json().then(function(d) { return d.results || d || []; }); }).catch(function() { return []; }),
+        fetch('/api/v1/tasks/', { headers: authHeaders() }).then(function(r) { if (r.status === 401) { window.location.href = '/login/'; return []; } if (!r.ok) return []; return r.json().then(function(d) { return d.results || d || []; }); }).catch(function() { return []; }),
+        fetch('/api/v1/finance/income/', { headers: authHeaders() }).then(function(r) { if (r.status === 401) { window.location.href = '/login/'; return []; } if (r.status === 403) { return []; } if (!r.ok) return []; return r.json().then(function(d) { return d.results || d || []; }); }).catch(function() { return []; }),
+        fetch('/api/v1/finance/expense/', { headers: authHeaders() }).then(function(r) { if (r.status === 401) { window.location.href = '/login/'; return []; } if (r.status === 403) { return []; } if (!r.ok) return []; return r.json().then(function(d) { return d.results || d || []; }); }).catch(function() { return []; }),
+        fetch('/api/v1/users/', { headers: authHeaders() }).then(function(r) { if (r.status === 401) { window.location.href = '/login/'; return []; } if (r.status === 403) { return []; } if (!r.ok) return []; return r.json().then(function(d) { return d.results || d || []; }); }).catch(function() { return []; })
+    ]).then(function(results) {
+        var projects = results[0], tasks = results[1], incomes = results[2], expenses = results[3], users = results[4];
+        var now = new Date();
+        var thisMonth = now.getMonth();
+        var thisYear = now.getFullYear();
+
+        // Projects
+        var totalProjects = projects.length;
+        var activeProjects = projects.filter(function(p) { return ['in_progress','construction','preparing'].indexOf(p.status) !== -1; }).length;
+        var completedProjects = projects.filter(function(p) { return p.status === 'completed'; }).length;
+        var newProjects = projects.filter(function(p) {
+            var d = new Date(p.created_at || p.start_date || now);
+            return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+        }).length;
+
+        document.getElementById('totalProjects').textContent = totalProjects;
+        document.getElementById('activeProjects').textContent = activeProjects;
+        document.getElementById('completedProjects').textContent = completedProjects;
+        document.getElementById('newProjects').textContent = newProjects;
+        document.getElementById('closedProjects').textContent = completedProjects;
+
+        // Tasks
+        var totalTasks = tasks.length;
+        var ongoingTasks = tasks.filter(function(t) { return ['in_progress','ongoing','construction'].indexOf(t.status) !== -1; }).length;
+        var doneTasks = tasks.filter(function(t) { return ['completed','done'].indexOf(t.status) !== -1; }).length;
+        var overdueTasks = tasks.filter(function(t) {
+            if (!t.end_date) return false;
+            return new Date(t.end_date) < now && ['completed','done'].indexOf(t.status) === -1;
+        }).length;
+
+        document.getElementById('totalTasks').textContent = totalTasks;
+        document.getElementById('ongoingTasks').textContent = ongoingTasks;
+        document.getElementById('doneTasks').textContent = doneTasks;
+        document.getElementById('overdueTasks').textContent = overdueTasks;
+
+        // Finance
+        var monthIncome = incomes.filter(function(i) {
+            if (!i.date) return false;
+            var d = new Date(i.date);
+            return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+        }).reduce(function(s, i) { return s + (parseFloat(i.amount) || 0); }, 0);
+
+        var monthExpense = expenses.filter(function(e) {
+            if (!e.date) return false;
+            var d = new Date(e.date);
+            return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+        }).reduce(function(s, e) { return s + (parseFloat(e.amount) || 0); }, 0);
+
+        var monthProfit = monthIncome - monthExpense;
+        var profitRate = monthIncome > 0 ? ((monthProfit / monthIncome) * 100).toFixed(1) : '0';
+
+        document.getElementById('monthIncome').textContent = '¥' + formatWan(monthIncome);
+        document.getElementById('monthExpense').textContent = '¥' + formatWan(monthExpense);
+        document.getElementById('monthProfit').textContent = '¥' + formatWan(monthProfit);
+        document.getElementById('profitRate').textContent = profitRate + '%';
+
+        // Users
+        var activeUsers = users.filter(function(u) { return u.is_active !== false; });
+        var adminCount = activeUsers.filter(function(u) { return u.role === 'admin'; }).length;
+        var pmCount = activeUsers.filter(function(u) { return u.role === 'pm'; }).length;
+        var devCount = activeUsers.filter(function(u) { return ['dev','business','finance'].indexOf(u.role) !== -1; }).length;
+
+        document.getElementById('totalUsers').textContent = activeUsers.length;
+        document.getElementById('adminCount').textContent = '管理员 ' + adminCount;
+        document.getElementById('pmCount').textContent = '经理 ' + pmCount;
+        document.getElementById('devCount').textContent = '成员 ' + devCount;
+        document.getElementById('topUsers').textContent = activeUsers.slice(0, 3).map(function(u) { return u.username; }).join('、') || '暂无';
+
+        // Active projects progress
+        renderActiveProjects(projects.filter(function(p) { return ['in_progress','construction','preparing'].indexOf(p.status) !== -1; }));
+
+        // Recent activities
+        loadRecentActivities(projects, tasks, incomes, expenses);
+    }).catch(function(err) {
+        console.error('加载统计数据失败:', err);
+        // 确保加载状态被清除，显示空状态
+        var els = ['totalProjects','activeProjects','completedProjects','newProjects','closedProjects','totalTasks','ongoingTasks','doneTasks','overdueTasks','monthIncome','monthExpense','monthProfit','profitRate','totalUsers'];
+        els.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && el.querySelector('.skeleton')) el.textContent = '—';
+        });
+        var projContainer = document.getElementById('activeProjectsContainer');
+        if (projContainer) projContainer.innerHTML = '<div class="col-12"><div class="empty-state"><i class="bi bi-exclamation-triangle empty-state-icon"></i><p class="empty-state-title">数据加载失败</p><p class="empty-state-desc">请刷新页面或检查网络连接</p></div></div>';
+        var timeline = document.getElementById('activityTimeline');
+        if (timeline) timeline.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle empty-state-icon"></i><p class="empty-state-title">数据加载失败</p></div>';
+    });
+}
+
+function loadRecentActivities(projects, tasks, incomes, expenses) {
+    var container = document.getElementById('activityTimeline');
+    if (!container) return;
+    var now = new Date();
+    var activities = [];
+    var statusText = { in_progress: '进行中', completed: '已完成', done: '已完成', pending: '待处理', ongoing: '进行中', construction: '建设中' };
+
+    projects.slice(0, 10).forEach(function(p) {
+        if (p.created_at) {
+            activities.push({ type: 'project', actor: p.manager_name || '系统', action: '创建了项目「' + (p.name || '未命名') + '」', time: p.created_at });
+        }
+        if (p.updated_at && p.updated_at !== p.created_at) {
+            activities.push({ type: 'project', actor: p.manager_name || '系统', action: '更新了项目「' + (p.name || '未命名') + '」', time: p.updated_at });
+        }
+    });
+
+    tasks.slice(0, 10).forEach(function(t) {
+        if (t.created_at) {
+            activities.push({ type: 'task', actor: t.manager_name || '系统', action: (statusText[t.status] || '更新') + '了任务「' + (t.name || '未命名') + '」', time: t.created_at });
+        }
+    });
+
+    incomes.slice(0, 5).forEach(function(i) {
+        if (i.date) {
+            var amt = parseFloat(i.amount || 0).toLocaleString('zh-CN');
+            activities.push({ type: 'finance', actor: '财务', action: '录入了项目「' + (i.project_name || '通用') + '」收入 ¥' + amt, time: i.date });
+        }
+    });
+
+    expenses.slice(0, 5).forEach(function(e) {
+        if (e.date) {
+            var amt = parseFloat(e.amount || 0).toLocaleString('zh-CN');
+            activities.push({ type: 'finance', actor: '财务', action: '录入了项目「' + (e.project_name || '通用') + '」支出 ¥' + amt, time: e.date });
+        }
+    });
+
+    activities.sort(function(a, b) { return new Date(b.time) - new Date(a.time); });
+    var top8 = activities.slice(0, 8);
+
+    if (!top8.length) {
+        container.innerHTML = '<div class="empty-state">' +
+            '<i class="bi bi-clock-history empty-state-icon"></i>' +
+            '<p class="empty-state-title">暂无操作记录</p>' +
+            '<p class="empty-state-desc">创建项目或录入任务后将在这里显示动态</p>' +
+            '</div>';
+        return;
+    }
+
+    var html = '';
+    top8.forEach(function(a) {
+        var dotClass = 'dot-project';
+        if (a.type === 'task') dotClass = 'dot-task';
+        else if (a.type === 'finance') dotClass = 'dot-finance';
+        html += '<div class="timeline-item ' + dotClass + '">' +
+            '<div><span class="actor">' + escHtml(a.actor || '系统') + '</span> <span class="action">' + escHtml(a.action) + '</span></div>' +
+            '<div class="time"><i class="bi bi-clock"></i> ' + formatTimeAgo(new Date(a.time), now) + '</div></div>';
+    });
+    container.innerHTML = html;
+}
+
+function formatTimeAgo(date, now) {
+    var diff = (now - date) / 1000;
+    if (diff < 60) return '刚刚';
+    if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+    if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+    return Math.floor(diff / 86400) + '天前';
+}
+
+function renderActiveProjects(projects) {
+    var container = document.getElementById('activeProjectsContainer');
+    if (!container) return;
+    if (!projects || !projects.length) {
+        container.innerHTML = '<div class="col-12">' +
+            '<div class="empty-state">' +
+            '<i class="bi bi-folder-x empty-state-icon"></i>' +
+            '<p class="empty-state-title">暂无进行中的项目</p>' +
+            '<a href="/projects/" class="empty-state-link">去创建第一个项目 →</a>' +
+            '</div>' +
+            '</div>';
+        return;
+    }
+
+    var getProgressClass = function(progress) {
+        if (progress < 30) return 'low';
+        if (progress < 60) return 'mid';
+        return 'high';
+    };
+
+    var html = '';
+    projects.slice(0, 6).forEach(function(p) {
+        var progress = parseInt(p.progress) || 0;
+        if (!p.progress && p.status) {
+            var sp = { preparing: 10, construction: 30, in_progress: 60 };
+            progress = sp[p.status] || 0;
+        }
+        var pClass = getProgressClass(progress);
+        var budgetStr = p.budget ? '¥' + formatWan(parseFloat(p.budget)) : '';
+        html += '<div class="col-md-4">' +
+            '<div class="progress-item">' +
+            '<div class="d-flex justify-content-between small mb-1">' +
+            '<span class="fw-medium text-truncate" style="max-width:180px;" title="' + escHtml(p.name || '未命名项目') + '">' + escHtml(p.name || '未命名项目') + '</span>' +
+            '<span class="text-muted ms-2">' + progress + '%</span></div>' +
+            '<div class="progress" style="height:6px;">' +
+            '<div class="progress-bar progress-bar-gradient ' + pClass + '" style="width:' + progress + '%"></div></div>' +
+            '<div class="d-flex justify-content-between small text-muted mt-1">' +
+            '<span class="text-truncate" style="max-width:120px;" title="' + escHtml(p.client || p.client_name || '') + '">' + escHtml(p.client || p.client_name || '') + '</span>' +
+            '<span class="ms-2">' + budgetStr + '</span></div>' +
+            '</div></div>';
+    });
+    container.innerHTML = html;
+}
+
+function updateNotifBadge() {
+    var token = localStorage.getItem('auth_token');
+    if (!token) return;
+    fetch('/api/v1/notifications/', { headers: { 'Authorization': 'Token ' + token } })
+        .then(function(r) { if (r.status === 401) { window.location.href = '/login/'; return null; } if (!r.ok) return null; return r.json(); })
+        .then(function(data) {
+            if (!data) return;
+            var list = data.results || data || [];
+            var unread = list.filter(function(n) { return !n.is_read; }).length;
+            var badges = [
+                document.getElementById('notifBadgeSidebar'),
+                document.getElementById('notifBadgeDesktop'),
+                document.getElementById('notifBadgeMobile')
+            ];
+            badges.forEach(function(el) {
+                if (!el) return;
+                if (unread > 0) {
+                    el.textContent = unread > 99 ? '99+' : unread;
+                    el.style.display = 'flex';
+                } else {
+                    el.style.display = 'none';
+                }
+            });
+        }).catch(function() {});
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (!checkAuth()) return;
+    // 清除所有骨架屏，防止一直显示加载状态
+    document.querySelectorAll('.skeleton').forEach(function(el) {
+        el.style.display = 'none';
+    });
+    loadDashboardStats();
+    updateNotifBadge();
+});
+// 备用：如果DOMContentLoaded已触发但JS出错，也清除骨架屏
+setTimeout(function() {
+    document.querySelectorAll('.skeleton').forEach(function(el) {
+        el.style.display = 'none';
+    });
+}, 2000);
+
+// 备用：确保退出按钮始终有效（backup event listener）
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('button[onclick="logout()"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+    });
+});
+// Toast notification system
+function showToast(msg, type, duration) {
+    type = type || 'info';
+    duration = duration || 3000;
+    var container = document.querySelector('.toast-container') || (function() {
+        var div = document.createElement('div');
+        div.className = 'toast-container';
+        document.body.appendChild(div);
+        return div;
+    })();
+    var toast = document.createElement('div');
+    toast.className = 'toast-msg ' + type;
+    var icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
+    toast.innerHTML = '<i class="bi ' + (icons[type] || icons.info) + '"></i><span>' + msg + '</span>';
+    container.appendChild(toast);
+    setTimeout(function() {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(function() { toast.remove(); }, 300);
+    }, duration);
+}
+</script>
+<!-- Bottom Tab Nav -->
+<nav class="bottom-tab-nav d-md-none">
+    <a href="/dashboard/" class="tab-item"><i class="bi bi-house"></i><span>首页</span></a>
+    <a href="/projects/" class="tab-item"><i class="bi bi-folder"></i><span>项目</span></a>
+    <a href="/files/" class="tab-item"><i class="bi bi-file-earmark"></i><span>文件</span></a>
+    <a href="/tasks/" class="tab-item"><i class="bi bi-kanban"></i><span>任务</span></a>
+    <a href="/system/" class="tab-item"><i class="bi bi-person"></i><span>我的</span></a>
+</nav>
+</body>
+</html>

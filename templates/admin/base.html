@@ -1,0 +1,382 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - 工程管理系统</title>
+    
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/base.css' %}">
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f0f2f5;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        /* 顶部导航 */
+        #header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            height: 50px;
+            line-height: 50px;
+            padding: 0 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+        }
+        
+        #branding h1 {
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        
+        #user-tools {
+            color: #fff;
+            font-size: 13px;
+        }
+        
+        #user-tools a {
+            color: #fff !important;
+            text-decoration: none;
+        }
+        
+        /* 主容器 */
+        #container {
+            display: flex;
+            margin-top: 50px;
+            min-height: calc(100vh - 50px);
+        }
+        
+        /* 左侧边栏 */
+        #left-bar {
+            width: 200px;
+            background: #fff;
+            border-right: 1px solid #e8e8e8;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+        
+        .sidebar-section {
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .sidebar-title {
+            padding: 12px 16px 6px;
+            font-size: 11px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        #left-bar ul {
+            list-style: none;
+            padding: 0 0 12px 0;
+        }
+        
+        #left-bar li a {
+            display: block;
+            padding: 8px 16px;
+            color: #555;
+            text-decoration: none;
+            font-size: 13px;
+            border-left: 3px solid transparent;
+        }
+        
+        #left-bar li a:hover {
+            background: #f5f7ff;
+            color: #667eea;
+            border-left-color: #667eea;
+        }
+        
+        #left-bar li.selected a {
+            background: #f5f7ff;
+            color: #667eea;
+            border-left-color: #667eea;
+            font-weight: 600;
+        }
+        
+        /* 内容区 */
+        #content {
+            flex: 1;
+            padding: 20px;
+            overflow-x: auto;
+        }
+        
+        /* 面包屑 */
+        .breadcrumbs {
+            background: #fff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .breadcrumbs a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        /* 页面标题 */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .page-header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        
+        /* 卡片 */
+        .card {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            margin-bottom: 16px;
+            border: none;
+        }
+        
+        .card-header {
+            background: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 12px 16px;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        
+        .card-header h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .card-body {
+            padding: 16px;
+        }
+        
+        /* 表格 */
+        .table {
+            margin: 0;
+            font-size: 13px;
+        }
+        
+        .table thead th {
+            background: #f8f9fa;
+            border-bottom: 2px solid #e8e8e8;
+            font-weight: 600;
+            color: #555;
+            padding: 10px 12px;
+            white-space: nowrap;
+        }
+        
+        .table tbody td {
+            padding: 10px 12px;
+            vertical-align: middle;
+        }
+        
+        .table tbody tr:hover {
+            background: #f8f9ff;
+        }
+        
+        /* 按钮 */
+        .btn {
+            border-radius: 6px;
+            font-size: 13px;
+            padding: 6px 12px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+        
+        /* 表单 */
+        .form-control, .form-select {
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 13px;
+            border: 1.5px solid #e0e0e0;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        /* 应用卡片 */
+        .app-index {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+        }
+        
+        .app-index .card {
+            margin: 0;
+        }
+        
+        .app-index .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px 10px 0 0 !important;
+        }
+        
+        .app-index .card-header h2 {
+            color: #fff;
+            font-size: 13px;
+        }
+        
+        .app-index .table {
+            font-size: 12px;
+        }
+        
+        .app-index .table td {
+            padding: 6px 10px;
+        }
+        
+        .addlink { color: #28a745; text-decoration: none; padding: 2px 6px; }
+        .changelink { color: #667eea; text-decoration: none; padding: 2px 6px; }
+        .deletelink { color: #dc3545; text-decoration: none; padding: 2px 6px; }
+        
+        /* 搜索框 */
+        .search-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .search-bar input {
+            flex: 1;
+            max-width: 300px;
+        }
+        
+        /* 操作栏 */
+        .actions-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .actions-bar select {
+            max-width: 200px;
+        }
+        
+        /* 分页 */
+        .pagination {
+            display: flex;
+            gap: 4px;
+            margin-top: 16px;
+        }
+        
+        /* 消息 */
+        .messagelist {
+            list-style: none;
+            margin: 0 0 16px 0;
+            padding: 0;
+        }
+        
+        .messagelist li {
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        
+        /* 统计卡片 */
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+        
+        .stat-card h3 {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+        
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+    <header id="header">
+        <div class="d-flex justify-content-between align-items-center h-100">
+            <div id="branding">
+                <h1><i class="bi bi-shield-lock me-2"></i>工程管理系统</h1>
+            </div>
+            <div id="user-tools">
+                {% if user.has_usable_password %}
+                <a href="{% url 'admin:password_change' %}">修改密码</a>
+                <span class="separator mx-2">|</span>
+                {% endif %}
+                <a href="{% url 'admin:logout' %}">退出</a>
+            </div>
+        </div>
+    </header>
+
+    <div id="container">
+        <div id="content">
+            {% block breadcrumbs %}
+            <div class="breadcrumbs">
+                <a href="{% url 'admin:index' %}">首页</a>
+                {% if title %} &rsaquo; {{ title }}{% endif %}
+            </div>
+            {% endblock %}
+
+            {% block messages %}
+                {% if messages %}
+                <ul class="messagelist">
+                    {% for message in messages %}
+                    <li class="{{ message.tags }}">{{ message|capfirst }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            {% endblock %}
+
+            {% block content %}
+            {{ content }}
+            {% endblock %}
+        </div>
+    </div>
+
+    <script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

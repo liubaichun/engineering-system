@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 工程管理系统</title>
+    <link href="/static/local/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/local/css/bootstrap-icons.min.css" rel="stylesheet">
+        <style>
+        /* ============================================
+           CSS ROOT VARIABLES - Global Color System
+           ============================================ */
+        :root {
+            /* Primary Colors */
+            --color-primary: #0d6efd;
+            --color-primary-dark: #0b5ed7;
+            --color-primary-light: #d0e8ff;
+            --color-primary-bg: #e7f1ff;
+
+            /* Sidebar */
+            --sidebar-bg: #1a1a2e;
+            --sidebar-hover: #16213e;
+            --sidebar-text: #b8bcd4;
+            --sidebar-text-active: #ffffff;
+            --sidebar-width: 240px;
+
+            /* Page & Card */
+            --page-bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --card-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --card-radius: 12px;
+
+            /* Status Colors */
+            --color-success: #198754;
+            --color-warning: #ffc107;
+            --color-danger: #dc3545;
+            --color-info: #0dcaf0;
+            --color-purple: #6f42c1;
+            --color-pink: #e91e63;
+
+            /* Progress Gradient */
+            --progress-low: #dc3545;
+            --progress-mid: #ffc107;
+            --progress-high: #198754;
+
+            /* Text */
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --text-muted: #adb5bd;
+
+            /* Timeline Dot Colors */
+            --dot-project: #0d6efd;
+            --dot-task: #198754;
+            --dot-finance: #fd7e14;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.15);
+
+            /* Stat Icon Backgrounds */
+            --icon-project-bg: #d0e8ff;
+            --icon-task-bg: #fff3e0;
+            --icon-finance-bg: #e8f5e9;
+            --icon-user-bg: #f3e5f5;
+        }
+
+        /* ============================================
+           BASE STYLES
+           ============================================ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 40px;
+        }
+        .auth-card {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        /* ============================================
+           SIDEBAR
+           ============================================ */
+        nav.sidebar {
+            position: fixed; top: 0; left: 0; width: var(--sidebar-width);
+            height: 100vh; background: var(--sidebar-bg); z-index: 100; overflow-y: auto;
+            display: flex; flex-direction: column;
+        }
+        .sidebar-brand {
+            padding: 16px 20px; color: #fff; font-size: 1rem; font-weight: 700;
+            border-bottom: 1px solid #2a2a4a; margin-bottom: 8px;
+        }
+        nav.sidebar .nav { flex: 1; }
+        nav.sidebar .nav-link {
+            color: var(--sidebar-text); padding: 10px 16px; border-radius: 8px; margin: 2px 8px;
+            font-size: 0.9rem; display: flex; align-items: center; text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        nav.sidebar .nav-link:hover { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        nav.sidebar .nav-link.active { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        nav.sidebar .nav-link i { width: 20px; margin-right: 8px; }
+        nav.sidebar .mt-auto { border-top: 1px solid #2a2a4a; padding: 12px; }
+
+        /* Offcanvas mobile sidebar */
+        .offcanvas { background: var(--sidebar-bg); }
+        .offcanvas .nav-link { color: var(--sidebar-text); padding: 10px 16px; border-radius: 8px; margin: 2px 8px; font-size: 0.9rem; display: flex; align-items: center; text-decoration: none; }
+        .offcanvas .nav-link:hover { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        .offcanvas .nav-link i { width: 20px; margin-right: 8px; }
+        .offcanvas .mt-auto { border-top: 1px solid #2a2a4a; padding: 12px; }
+
+        /* Main content */
+        .main-content { margin-left: var(--sidebar-width); padding: 24px; min-height: 100vh; }
+
+        /* ============================================
+           RESPONSIVE BREAKPOINTS
+           ============================================ */
+        /* Mobile (< 768px) */
+        @media (max-width: 767.98px) {
+            .main-content { margin-left: 0 !important; padding: 12px; padding-top: 60px; }
+            nav.sidebar { display: none; }
+            .stat-card { padding: 12px !important; }
+            .stat-value { font-size: 1.4rem !important; }
+            .page-header h4 { font-size: 1.2rem; }
+            .card-body { padding: 12px; }
+            .table { font-size: 0.8rem; }
+            .card { border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        }
+
+        /* Tablet (768px - 991.98px) */
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .main-content { margin-left: 0 !important; padding: 16px; }
+            nav.sidebar { display: none; }
+        }
+
+        /* Desktop (>= 992px) - hide mobile offcanvas toggle */
+        @media (min-width: 992px) {
+            #mobileSidebar { display: none !important; }
+            nav.d-lg-none { display: none !important; }
+        }
+
+        /* Large desktop (>= 1200px) */
+        @media (min-width: 1200px) {
+            .main-content { padding: 32px 40px; }
+            .container-fluid { max-width: 1400px; }
+        }
+
+        /* Hide desktop sidebar on mobile/tablet */
+        @media (max-width: 991.98px) {
+            nav.sidebar { display: none; }
+            .main-content { margin-left: 0 !important; }
+        }
+
+        /* ============================================
+           CARDS & PAGE HEADER
+           ============================================ */
+        .card { border: none; border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
+        .page-header { margin-bottom: 24px; }
+        .page-header h4 { font-weight: 700; color: var(--sidebar-bg); }
+
+        /* ============================================
+           BUTTONS
+           ============================================ */
+        .btn { transition: all 0.2s ease; border-radius: 8px; }
+        .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+        .btn-primary { background-color: var(--color-primary); border-color: var(--color-primary); }
+        .btn-primary:hover { background-color: var(--color-primary-dark); border-color: var(--color-primary-dark); box-shadow: 0 4px 12px rgba(13,110,253,0.35); }
+        .btn-success { background-color: var(--color-success); border-color: var(--color-success); }
+        .btn-danger { background-color: var(--color-danger); border-color: var(--color-danger); }
+        .btn-warning { background-color: var(--color-warning); border-color: var(--color-warning); color: #000; }
+        .btn-outline-secondary { color: var(--sidebar-text); border-color: var(--sidebar-text); border-radius: 8px; }
+        .btn-outline-secondary:hover { background: var(--sidebar-hover); color: #fff; border-color: var(--sidebar-hover); }
+
+        /* ============================================
+           FORM ELEMENTS
+           ============================================ */
+        .form-control, .form-select {
+            border-radius: 8px;
+            border-color: #dee2e6;
+            box-shadow: var(--shadow-sm);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(13,110,253,0.15);
+        }
+        .form-label { font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
+
+        /* ============================================
+           TEXT UTILITIES
+           ============================================ */
+        .text-primary { color: var(--color-primary) !important; }
+        .text-success { color: var(--color-success) !important; }
+        .text-danger { color: var(--color-danger) !important; }
+        .text-warning { color: var(--color-warning) !important; }
+        .text-info { color: var(--color-info) !important; }
+        .text-muted { color: var(--text-muted) !important; }
+
+        /* ============================================
+           BADGES & ALERTS
+           ============================================ */
+        .badge { border-radius: 6px; font-weight: 500; }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .badge-approved { background: #d1e7dd; color: #0f5132; }
+        .badge-rejected { background: #f8d7da; color: #842029; }
+
+        /* ============================================
+           TABLE STYLES
+           ============================================ */
+        .table { background: var(--card-bg); border-radius: var(--card-radius); overflow: hidden; }
+        .table thead th { background: var(--color-primary-bg); color: var(--color-primary-dark); font-weight: 600; border: none; }
+        .table tbody tr:hover { background: var(--color-primary-bg); }
+        .table td { vertical-align: middle; }
+
+        /* ============================================
+           STAT CARDS (for dashboard)
+           ============================================ */
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow);
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; margin-bottom: 12px;
+        }
+        .stat-icon.project { background: var(--icon-project-bg); }
+        .stat-icon.task { background: var(--icon-task-bg); }
+        .stat-icon.finance { background: var(--icon-finance-bg); }
+        .stat-icon.user { background: var(--icon-user-bg); }
+        .stat-value { font-size: 1.8rem; font-weight: 700; line-height: 1.2; }
+        .stat-label { color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; }
+        .sub-stat {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-top: 8px; margin-top: 8px; border-top: 1px solid #f0f0f0;
+            font-size: 0.8rem; color: var(--text-secondary);
+        }
+
+        /* ============================================
+           PROGRESS BARS
+           ============================================ */
+        .progress { border-radius: 8px; height: 8px; }
+        .progress-bar { border-radius: 8px; transition: width 0.6s ease; }
+
+        /* ============================================
+           MODAL
+           ============================================ */
+        .modal-content { border-radius: var(--card-radius); border: none; box-shadow: var(--shadow-lg); }
+        .modal-header { border-bottom: 1px solid #f0f0f0; border-radius: var(--card-radius) var(--card-radius) 0 0; }
+        .modal-footer { border-top: 1px solid #f0f0f0; }
+        .modal-title { font-weight: 700; color: var(--sidebar-bg); }
+
+        /* ============================================
+           OFFCANVAS HEADER
+           ============================================ */
+        .offcanvas-header { border-bottom: 1px solid #2a2a4a; padding: 16px; }
+
+        /* ============================================
+           SKELETON LOADING
+           ============================================ */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f2f5 25%, #e0e4e8 50%, #f0f2f5 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 4px;
+        }
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ============================================
+           EMPTY STATE
+           ============================================ */
+        .empty-state {
+            text-align: center; padding: 48px 24px; color: var(--text-muted);
+        }
+        .empty-state i { font-size: 3rem; margin-bottom: 12px; opacity: 0.4; }
+        .empty-state p { font-size: 0.9rem; }
+
+        /* ============================================
+           AUTH CARD (Login/Register)
+           ============================================ */
+        .auth-card {
+            max-width: 420px;
+            margin: 0 auto;
+            margin-top: 60px;
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            box-shadow: var(--shadow-lg);
+            padding: 32px;
+        }
+        .auth-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .auth-header h3 {
+            color: var(--sidebar-bg);
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .auth-header p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin: 0;
+        }
+        .auth-body .nav-tabs {
+            margin-bottom: 20px;
+        }
+        .auth-body .tab-content {
+            padding-top: 16px;
+        }
+
+        /* Mobile: hide sidebar */
+        @media (max-width: 991.98px) {
+            nav.sidebar { display: none !important; }
+        }
+
+
+        /* Password toggle button */
+        .password-field {
+            position: relative;
+        }
+        .password-field .form-control {
+            padding-right: 44px;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 4px 8px;
+            cursor: pointer;
+            color: #6c757d;
+            font-size: 1.1rem;
+        }
+        .password-toggle:hover {
+            color: #495057;
+        }
+        /* Login Page Mobile */
+        @media (max-width: 480px) {
+            body.login-body { align-items: center !important; padding-top: 0 !important; }
+        }
+    </style>
+
+
+</head>
+<body class="login-body">
+
+<div class="auth-card">
+    <div class="auth-header">
+        <h3><i class="bi bi-grid-3x3-gap me-2"></i>工程管理系统</h3>
+        <p>Engineering Management System</p>
+    </div>
+    <div class="auth-body">
+        <!-- Tab 切换 -->
+        <ul class="nav nav-tabs" id="authTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login-pane" type="button" role="tab" aria-controls="login-pane" aria-selected="true">登录</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register-pane" type="button" role="tab" aria-controls="register-pane" aria-selected="false">注册</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="authTabContent">
+
+            <!-- 登录表单 -->
+            <div class="tab-pane fade show active" id="login-pane" role="tabpanel" aria-labelledby="login-tab">
+                <div id="login-error" class="alert alert-danger d-none" role="alert"></div>
+                <form id="login-form" novalidate>
+                    <!-- Username -->
+                    <div class="mb-3">
+                        <label for="login-username" class="form-label">用户名</label>
+                        <input type="text" class="form-control" id="login-username" name="username" placeholder="请输入用户名" required autocomplete="username">
+                        <div class="invalid-feedback-inline" id="login-username-error"></div>
+                    </div>
+                    <!-- Password -->
+                    <div class="mb-3">
+                        <label for="login-password" class="form-label">密码</label>
+                        <div class="password-field">
+                            <input type="password" class="form-control pe-5" id="login-password" name="password" placeholder="请输入密码" required autocomplete="current-password">
+                            <button type="button" class="password-toggle" onclick="togglePw('login-password', this)" aria-label="切换密码可见">
+                                <i class="bi bi-eye-slash" id="login-password-icon"></i>
+                            </button>
+                        </div>
+                        <div class="invalid-feedback-inline" id="login-password-error"></div>
+                    </div>
+                    <!-- Remember me -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="remember-me" name="remember">
+                            <label class="form-check-label" for="remember-me">记住登录状态（30天内有效）</label>
+                        </div>
+                    </div>
+                    <!-- Submit -->
+                    <button type="submit" class="btn btn-primary" id="login-btn">
+                        <span id="login-spinner" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+                        <span id="login-btn-text">登录</span>
+                    </button>
+                </form>
+                <p class="register-hint">还没有账号？<a href="#" id="go-register">立即注册</a></p>
+            </div>
+
+            <!-- 注册表单 -->
+            <div class="tab-pane fade" id="register-pane" role="tabpanel" aria-labelledby="register-tab">
+                <div id="register-error" class="alert alert-danger d-none" role="alert"></div>
+                <div id="register-success" class="alert alert-success d-none" role="alert"></div>
+                <form id="register-form" novalidate>
+                    <!-- Username -->
+                    <div class="mb-3">
+                        <label for="reg-username" class="form-label">用户名</label>
+                        <input type="text" class="form-control" id="reg-username" name="username" placeholder="请输入用户名" required autocomplete="username">
+                        <div class="invalid-feedback-inline" id="reg-username-error"></div>
+                    </div>
+                    <!-- Email -->
+                    <div class="mb-3">
+                        <label for="reg-email" class="form-label">邮箱</label>
+                        <input type="email" class="form-control" id="reg-email" name="email" placeholder="请输入邮箱" required autocomplete="email">
+                        <div class="invalid-feedback-inline" id="reg-email-error"></div>
+                    </div>
+                    <!-- Password -->
+                    <div class="mb-3">
+                        <label for="reg-password" class="form-label">密码</label>
+                        <div class="password-field">
+                            <input type="password" class="form-control pe-5" id="reg-password" name="password" placeholder="请输入密码（至少6位）" required autocomplete="new-password">
+                            <button type="button" class="password-toggle" onclick="togglePw('reg-password', this)" aria-label="切换密码可见">
+                                <i class="bi bi-eye-slash" id="reg-password-icon"></i>
+                            </button>
+                        </div>
+                        <!-- Password Strength Indicator -->
+                        <div class="password-strength" id="password-strength">
+                            <div class="strength-bar">
+                                <div class="strength-fill" id="strength-fill"></div>
+                            </div>
+                            <small class="strength-text" id="strength-text">请输入密码</small>
+                        </div>
+                        <div class="invalid-feedback-inline" id="reg-password-error"></div>
+                    </div>
+                    <!-- Confirm Password -->
+                    <div class="mb-3">
+                        <label for="reg-password-confirm" class="form-label">确认密码</label>
+                        <div class="password-field">
+                            <input type="password" class="form-control pe-5" id="reg-password-confirm" name="password_confirm" placeholder="请再次输入密码" required autocomplete="new-password">
+                            <button type="button" class="password-toggle" onclick="togglePw('reg-password-confirm', this)" aria-label="切换密码可见">
+                                <i class="bi bi-eye-slash" id="reg-password-confirm-icon"></i>
+                            </button>
+                        </div>
+                        <div class="invalid-feedback-inline" id="reg-password-confirm-error"></div>
+                    </div>
+                    <!-- Role -->
+                    <div class="mb-3">
+                        <label for="reg-role" class="form-label">角色选择</label>
+                        <select class="form-select" id="reg-role" name="role" required>
+                            <option value="" disabled selected>请选择角色</option>
+                            <option value="pm">项目经理 (pm)</option>
+                            <option value="business">商务 (business)</option>
+                            <option value="finance">财务 (finance)</option>
+                        </select>
+                        <div class="invalid-feedback-inline" id="reg-role-error"></div>
+                    </div>
+                    <!-- Submit -->
+                    <button type="submit" class="btn btn-primary" id="register-btn">
+                        <span id="register-spinner" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+                        <span id="register-btn-text">注册</span>
+                    </button>
+                </form>
+                <p class="login-hint">已有账号？<a href="#" id="go-login">立即登录</a></p>
+            </div>
+
+        </div>
+    </div>
+    <div class="auth-footer">
+        <i class="bi bi-grid-3x3-gap me-1"></i>工程管理系统 v2.0
+    </div>
+</div>
+
+<script src="/static/local/js/bootstrap.bundle.min.js"></script>
+<script>
+    // ====== Tab 切换辅助 ======
+    function switchToTab(tabId) {
+        const trigger = document.querySelector(tabId);
+        const tab = bootstrap.Tab.getOrCreateInstance(trigger);
+        tab.show();
+    }
+
+    // 密码可见切换
+    function togglePw(id, btn) {
+        const input = document.getElementById(id);
+        if (!input) return;
+        const icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'bi bi-eye';
+        } else {
+            input.type = 'password';
+            icon.className = 'bi bi-eye-slash';
+        }
+    }
+
+    document.getElementById('go-register').addEventListener('click', e => {
+        e.preventDefault();
+        switchToTab('#register-tab');
+    });
+    document.getElementById('go-login').addEventListener('click', e => {
+        e.preventDefault();
+        switchToTab('#login-tab');
+    });
+
+    // ====== Inline Validation Helpers ======
+    function setFieldInvalid(inputId, msg) {
+        const input = document.getElementById(inputId);
+        const error = document.getElementById(inputId + '-error');
+        if (input) {
+            input.classList.add('is-invalid');
+            if (error) {
+                error.textContent = msg;
+            }
+        }
+    }
+
+    function clearFieldInvalid(inputId) {
+        const input = document.getElementById(inputId);
+        const error = document.getElementById(inputId + '-error');
+        if (input) input.classList.remove('is-invalid');
+        if (error) error.textContent = '';
+    }
+
+    function clearAllErrors(formId) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+        form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+        form.querySelectorAll('.invalid-feedback-inline').forEach(el => el.textContent = '');
+    }
+
+    // ====== 工具函数 ======
+    function showError(el, msg) {
+        el.textContent = msg;
+        el.classList.remove('d-none');
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    function hideError(el) {
+        el.classList.add('d-none');
+        el.textContent = '';
+    }
+    function setLoading(btn, spinner, textEl, loading, btnText) {
+        if (loading) {
+            btn.disabled = true;
+            spinner.classList.remove('d-none');
+            textEl.textContent = '处理中...';
+        } else {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+            textEl.textContent = btnText;
+        }
+    }
+
+    // ====== PASSWORD STRENGTH INDICATOR ======
+    function assessPassword(password) {
+        const strengthEl = document.getElementById('password-strength');
+        const fillEl = document.getElementById('strength-fill');
+        const textEl = document.getElementById('strength-text');
+
+        if (!password) {
+            strengthEl.classList.remove('active');
+            return;
+        }
+
+        strengthEl.classList.add('active');
+
+        let score = 0;
+        // Length checks
+        if (password.length >= 6) score++;
+        if (password.length >= 10) score++;
+        // Character type checks
+        if (/[0-9]/.test(password)) score++;
+        if (/[a-zA-Z]/.test(password)) score++;
+        if (/[^0-9a-zA-Z]/.test(password)) score++;
+
+        // Reset classes
+        fillEl.className = 'strength-fill';
+        textEl.className = 'strength-text';
+
+        if (score <= 1) {
+            fillEl.classList.add('weak');
+            textEl.classList.add('weak');
+            textEl.textContent = '密码强度：弱（建议包含数字、字母和特殊字符）';
+        } else if (score <= 3) {
+            fillEl.classList.add('medium');
+            textEl.classList.add('medium');
+            textEl.textContent = '密码强度：中等（可设置更复杂的密码）';
+        } else {
+            fillEl.classList.add('strong');
+            textEl.classList.add('strong');
+            textEl.textContent = '密码强度：强';
+        }
+    }
+
+    // Attach password strength listener
+    document.getElementById('reg-password').addEventListener('input', e => {
+        assessPassword(e.target.value);
+        // Real-time clear error on input
+        clearFieldInvalid('reg-password');
+    });
+
+    // Also clear errors on other inputs
+    ['login-username', 'login-password', 'reg-username', 'reg-email', 'reg-password-confirm', 'reg-role'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', () => clearFieldInvalid(id));
+            el.addEventListener('change', () => clearFieldInvalid(id));
+        }
+    });
+
+    // ====== 登录 ======
+    const loginForm = document.getElementById('login-form');
+    const loginError = document.getElementById('login-error');
+    const loginBtn = document.getElementById('login-btn');
+    const loginSpinner = document.getElementById('login-spinner');
+    const loginBtnText = document.getElementById('login-btn-text');
+
+    loginForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        hideError(loginError);
+        clearAllErrors('login-form');
+
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+        const remember = document.getElementById('remember-me').checked;
+
+        let hasError = false;
+
+        if (!username) {
+            setFieldInvalid('login-username', '请输入用户名');
+            hasError = true;
+        }
+        if (!password) {
+            setFieldInvalid('login-password', '请输入密码');
+            hasError = true;
+        }
+
+        if (hasError) return;
+
+        setLoading(loginBtn, loginSpinner, loginBtnText, true);
+
+        try {
+            const resp = await fetch('/api/v1/users/login/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await resp.json().catch(() => ({}));
+
+            if (!resp.ok) {
+                const msg = data.detail || data.message || data.error || '登录失败，请检查用户名和密码';
+                throw new Error(msg);
+            }
+
+            // 保存 token
+            const token = data.token || data.access || data.key;
+            if (token) {
+                localStorage.setItem('auth_token', token);
+                localStorage.setItem('username', username);
+                if (remember) {
+                    localStorage.setItem('remember_me', 'true');
+                }
+            }
+
+            // 跳转到项目页
+            window.location.href = '/dashboard/';
+        } catch (err) {
+            showError(loginError, err.message || '网络错误，请稍后重试');
+        } finally {
+            setLoading(loginBtn, loginSpinner, loginBtnText, false, '登录');
+        }
+    });
+
+    // ====== 注册 ======
+    const registerForm = document.getElementById('register-form');
+    const registerError = document.getElementById('register-error');
+    const registerSuccess = document.getElementById('register-success');
+    const registerBtn = document.getElementById('register-btn');
+    const registerSpinner = document.getElementById('register-spinner');
+    const registerBtnText = document.getElementById('register-btn-text');
+
+    registerForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        hideError(registerError);
+        registerSuccess.classList.add('d-none');
+        clearAllErrors('register-form');
+
+        const username = document.getElementById('reg-username').value.trim();
+        const email = document.getElementById('reg-email').value.trim();
+        const password = document.getElementById('reg-password').value;
+        const passwordConfirm = document.getElementById('reg-password-confirm').value;
+        const role = document.getElementById('reg-role').value;
+
+        let hasError = false;
+
+        if (!username) {
+            setFieldInvalid('reg-username', '请输入用户名');
+            hasError = true;
+        }
+        if (!email) {
+            setFieldInvalid('reg-email', '请输入邮箱');
+            hasError = true;
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setFieldInvalid('reg-email', '请输入有效的邮箱地址');
+            hasError = true;
+        }
+        if (!password) {
+            setFieldInvalid('reg-password', '请输入密码');
+            hasError = true;
+        } else if (password.length < 6) {
+            setFieldInvalid('reg-password', '密码长度至少为6位');
+            hasError = true;
+        }
+        if (!passwordConfirm) {
+            setFieldInvalid('reg-password-confirm', '请再次输入密码');
+            hasError = true;
+        } else if (password !== passwordConfirm) {
+            setFieldInvalid('reg-password-confirm', '两次输入的密码不一致');
+            hasError = true;
+        }
+        if (!role) {
+            setFieldInvalid('reg-role', '请选择角色');
+            hasError = true;
+        }
+
+        if (hasError) return;
+
+        const validRoles = ['pm', 'business', 'finance'];
+        if (!validRoles.includes(role)) {
+            showError(registerError, '请选择有效的角色');
+            return;
+        }
+
+        setLoading(registerBtn, registerSpinner, registerBtnText, true);
+
+        try {
+            const resp = await fetch('/api/v1/users/register/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, email, password, password_confirm: passwordConfirm, role })
+            });
+            const data = await resp.json().catch(() => ({}));
+
+            if (!resp.ok) {
+                const msg = data.detail || data.message || data.error || data.username?.[0] || data.email?.[0] || '注册失败，请稍后重试';
+                throw new Error(Array.isArray(msg) ? msg.join('；') : msg);
+            }
+
+            registerSuccess.textContent = '注册成功！即将跳转到登录...';
+            registerSuccess.classList.remove('d-none');
+            registerForm.reset();
+            assessPassword(''); // Reset strength indicator
+
+            // 2秒后自动切换到登录
+            setTimeout(() => switchToTab('#login-tab'), 2000);
+        } catch (err) {
+            showError(registerError, err.message || '网络错误，请稍后重试');
+        } finally {
+            setLoading(registerBtn, registerSpinner, registerBtnText, false, '注册');
+        }
+    });
+</script>
+</body>
+</html>

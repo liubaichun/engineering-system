@@ -1,0 +1,59 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version or commit SHA to deploy'
+        required: true
+        type: string
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.version }}
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+      - name: Deploy to server
+        run: |
+          echo "Deploying version: ${{ github.event.inputs.version }}"
+          ssh -o StrictHostKeyChecking=no root@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            cd /var/www/engineering_system
+            git fetch origin
+            git checkout ${{ github.event.inputs.version }}
+            source venv/bin/activate
+            pip install -r requirements.txt
+            python manage.py migrate --noinput
+            python manage.py collectstatic --noinput
+            pkill -HUP gunicorn || true
+            echo "Deployment completed"
+          ENDSSH
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          curl -f https://${{ secrets.SERVER_HOST }}/health/ || echo "Health check failed"
+
+      - name: Notify success
+        if: success()
+        run: |
+          echo "Production deployment successful at $(date)"
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "Production deployment failed"

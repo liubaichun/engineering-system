@@ -1,0 +1,261 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}工程管理系统{% endblock %}</title>
+    <link href="{% static 'local/css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'local/css/bootstrap-icons.min.css' %}" rel="stylesheet">
+    <style>
+    /* ============================================
+       CSS ROOT VARIABLES - Global Color System
+       ============================================ */
+    :root {
+        --color-primary: #0d6efd;
+        --color-primary-dark: #0b5ed7;
+        --color-primary-light: #d0e8ff;
+        --color-primary-bg: #e7f1ff;
+        --sidebar-bg: #1a1a2e;
+        --sidebar-hover: #16213e;
+        --sidebar-text: #b8bcd4;
+        --sidebar-text-active: #ffffff;
+        --sidebar-width: 240px;
+        --page-bg: #f0f2f5;
+        --card-bg: #ffffff;
+        --card-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        --card-radius: 12px;
+        --color-success: #198754;
+        --color-warning: #ffc107;
+        --color-danger: #dc3545;
+        --color-info: #0dcaf0;
+        --color-purple: #6f42c1;
+        --color-pink: #e91e63;
+        --text-primary: #212529;
+        --text-secondary: #6c757d;
+        --text-muted: #adb5bd;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+        --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+        --shadow-lg: 0 8px 24px rgba(0,0,0,0.15);
+    }
+
+    /* ============================================
+       BASE STYLES
+       ============================================ */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        background: var(--page-bg);
+        overflow-x: hidden;
+    }
+
+    /* ============================================
+       SIDEBAR (Desktop - >= 992px)
+       ============================================ */
+    nav.sidebar .nav-link:hover { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+    nav.sidebar .nav-link.active { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+    nav.sidebar .nav-link i { width: 20px; margin-right: 8px; }
+    nav.sidebar .mt-auto { border-top: 1px solid #2a2a4a; padding: 12px; }
+
+    /* ============================================
+       OFFCANVAS (Mobile Sidebar)
+       ============================================ */
+    .offcanvas { background: var(--sidebar-bg); }
+    .offcanvas .nav-link { color: var(--sidebar-text); padding: 10px 16px; border-radius: 8px; margin: 2px 8px; font-size: 0.9rem; display: flex; align-items: center; text-decoration: none; }
+    .offcanvas .nav-link:hover { background: var(--sidebar-hover); color: #fff; }
+    .offcanvas .nav-link i { width: 20px; margin-right: 8px; }
+    .offcanvas .mt-auto { border-top: 1px solid #2a2a4a; padding: 12px; }
+    .offcanvas .btn-close { filter: brightness(0) invert(1); }
+
+    /* ============================================
+       MAIN CONTENT
+       ============================================ */
+    .main-content { margin-left: var(--sidebar-width); padding: 24px; min-height: 100vh; }
+
+    /* ============================================
+       CARDS & PAGE HEADER
+       ============================================ */
+    .card { border: none; border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
+    .page-header { margin-bottom: 24px; }
+    .page-header h4 { font-weight: 700; color: var(--sidebar-bg); }
+
+    /* ============================================
+       BUTTONS
+       ============================================ */
+    .btn { transition: all 0.2s ease; border-radius: 8px; }
+    .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+    .btn-primary { background-color: var(--color-primary); border-color: var(--color-primary); }
+    .btn-primary:hover { background-color: var(--color-primary-dark); border-color: var(--color-primary-dark); box-shadow: 0 4px 12px rgba(13,110,253,0.35); }
+    .btn-success { background-color: var(--color-success); border-color: var(--color-success); }
+    .btn-danger { background-color: var(--color-danger); border-color: var(--color-danger); }
+    .btn-warning { background-color: var(--color-warning); border-color: var(--color-warning); color: #000; }
+    .btn-outline-secondary { color: var(--sidebar-text); border-color: var(--sidebar-text); border-radius: 8px; }
+    .btn-outline-secondary:hover { background: var(--sidebar-hover); color: #fff; border-color: var(--sidebar-hover); }
+
+    /* ============================================
+       FORM ELEMENTS
+       ============================================ */
+    .form-control, .form-select {
+        border-radius: 8px;
+        border-color: #dee2e6;
+        box-shadow: var(--shadow-sm);
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(13,110,253,0.15);
+    }
+    .form-label { font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
+
+    /* ============================================
+       BADGES & ALERTS
+       ============================================ */
+    .badge { border-radius: 6px; font-weight: 500; }
+    .badge-pending { background: #fff3cd; color: #856404; }
+    .badge-approved { background: #d1e7dd; color: #0f5132; }
+    .badge-rejected { background: #f8d7da; color: #842029; }
+
+    /* ============================================
+       TABLE STYLES
+       ============================================ */
+    .table { background: var(--card-bg); border-radius: var(--card-radius); overflow: hidden; }
+    .table thead th { background: var(--color-primary-bg); color: var(--color-primary-dark); font-weight: 600; border: none; }
+    .table tbody tr:hover { background: var(--color-primary-bg); }
+    .table td { vertical-align: middle; }
+
+    /* ============================================
+       STAT CARDS
+       ============================================ */
+    .stat-card {
+        background: var(--card-bg);
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+        padding: 20px;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .stat-icon {
+        width: 48px; height: 48px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.4rem; margin-bottom: 12px;
+    }
+    .stat-value { font-size: 1.8rem; font-weight: 700; line-height: 1.2; }
+    .stat-label { color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; }
+
+    /* ============================================
+       MODAL
+       ============================================ */
+    .modal-content { border-radius: var(--card-radius); border: none; box-shadow: var(--shadow-lg); }
+    .modal-header { border-bottom: 1px solid #f0f0f0; border-radius: var(--card-radius) var(--card-radius) 0 0; }
+    .modal-footer { border-top: 1px solid #f0f0f0; }
+    .modal-title { font-weight: 700; color: var(--sidebar-bg); }
+
+    /* ============================================
+       TOAST NOTIFICATIONS
+       ============================================ */
+    .toast-container {
+        position: fixed; top: 20px; right: 20px; z-index: 9999;
+        display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast-msg {
+        display: flex; align-items: center; gap: 10px;
+        padding: 12px 16px; border-radius: 8px; background: #fff;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15); font-size: 0.9rem;
+        min-width: 240px; max-width: 320px;
+        animation: toastIn 0.3s ease;
+    }
+    .toast-msg.success { border-left: 4px solid #198754; }
+    .toast-msg.error { border-left: 4px solid #dc3545; }
+    .toast-msg.warning { border-left: 4px solid #ffc107; }
+    .toast-msg.info { border-left: 4px solid #0d6efd; }
+    @keyframes toastIn {
+        from { opacity: 0; transform: translateX(20px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ============================================
+       BOTTOM TAB NAV (Mobile only)
+       ============================================ */
+    .bottom-tab-nav { display: none; }
+    @media (max-width: 767.98px) {
+        .bottom-tab-nav { display: flex !important; }
+        body { padding-bottom: 60px !important; }
+        .main-content { margin-left: 0 !important; padding: 12px; padding-top: 60px; }
+    }
+    .bottom-tab-nav .tab-item {
+        flex: 1; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        padding: 8px 4px; color: #6c757d; text-decoration: none;
+        font-size: 0.65rem; transition: color 0.2s;
+    }
+    .bottom-tab-nav .tab-item i { font-size: 1.2rem; margin-bottom: 2px; }
+    .bottom-tab-nav .tab-item.active,
+    .bottom-tab-nav .tab-item:hover { color: #0d6efd; }
+
+    /* ============================================
+       RESPONSIVE BREAKPOINTS
+       ============================================ */
+    @media (max-width: 767.98px) {
+        nav.sidebar { display: none; }
+        .stat-card { padding: 12px !important; flex: 0 0 calc(50% - 8px) !important; }
+        .card-body { padding: 12px; }
+        .table { font-size: 0.8rem; }
+    }
+    @media (min-width: 768px) and (max-width: 991.98px) {
+        nav.sidebar { display: none; }
+    }
+    @media (min-width: 992px) {
+        .mobile-nav { display: none !important; }
+        nav.d-lg-none { display: none !important; }
+    }
+    @media (min-width: 1200px) {
+        .main-content { padding: 32px 40px; }
+    }
+
+    /* ============================================
+       PAGE-SPECIFIC STYLES (override in child templates)
+       ============================================ */
+    {% block styles %}{% endblock %}
+    </style>
+</head>
+<body>
+
+{% include "includes/sidebar.html" %}
+
+<main class="main-content">
+{% block content %}{% endblock %}
+</main>
+
+{% include "includes/bottom_tabs.html" %}
+
+<script src="{% static 'local/js/bootstrap.bundle.min.js' %}"></script>
+<script>
+function logout() {
+    localStorage.removeItem('auth_token');
+    window.location.href = '/login/';
+}
+function showToast(msg, type, duration) {
+    type = type || 'info';
+    duration = duration || 3000;
+    var container = document.querySelector('.toast-container') || (function() {
+        var div = document.createElement('div');
+        div.className = 'toast-container';
+        document.body.appendChild(div);
+        return div;
+    })();
+    var toast = document.createElement('div');
+    toast.className = 'toast-msg ' + type;
+    var icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
+    toast.innerHTML = '<i class="bi ' + (icons[type] || icons.info) + '"></i><span>' + msg + '</span>';
+    container.appendChild(toast);
+    setTimeout(function() {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(function() { toast.remove(); }, 300);
+    }, duration);
+}
+</script>
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>收支管理 - 工程管理系统</title>
+    <link href="/static/local/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/local/css/bootstrap-icons.min.css" rel="stylesheet">
+        <style>
+        /* ============================================
+           CSS ROOT VARIABLES - Global Color System
+           ============================================ */
+        :root {
+            /* Primary Colors */
+            --color-primary: #0d6efd;
+            --color-primary-dark: #0b5ed7;
+            --color-primary-light: #d0e8ff;
+            --color-primary-bg: #e7f1ff;
+
+            /* Sidebar */
+            --sidebar-bg: #1a1a2e;
+            --sidebar-hover: #16213e;
+            --sidebar-text: #b8bcd4;
+            --sidebar-text-active: #ffffff;
+            --sidebar-width: 240px;
+
+            /* Page & Card */
+            --page-bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --card-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --card-radius: 12px;
+
+            /* Status Colors */
+            --color-success: #198754;
+            --color-warning: #ffc107;
+            --color-danger: #dc3545;
+            --color-info: #0dcaf0;
+            --color-purple: #6f42c1;
+            --color-pink: #e91e63;
+
+            /* Progress Gradient */
+            --progress-low: #dc3545;
+            --progress-mid: #ffc107;
+            --progress-high: #198754;
+
+            /* Text */
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --text-muted: #adb5bd;
+
+            /* Timeline Dot Colors */
+            --dot-project: #0d6efd;
+            --dot-task: #198754;
+            --dot-finance: #fd7e14;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.15);
+
+            /* Stat Icon Backgrounds */
+            --icon-project-bg: #d0e8ff;
+            --icon-task-bg: #fff3e0;
+            --icon-finance-bg: #e8f5e9;
+            --icon-user-bg: #f3e5f5;
+        }
+
+        /* ============================================
+           BASE STYLES
+           ============================================ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--page-bg);
+            overflow-x: hidden;
+        }
+
+        /* ============================================
+           SIDEBAR
+           ============================================ */
+        nav.sidebar {
+            position: fixed; top: 0; left: 0; width: var(--sidebar-width);
+            height: 100vh; background: var(--sidebar-bg); z-index: 100; overflow-y: auto;
+            display: flex; flex-direction: column;
+        }
+        .sidebar-brand {
+            padding: 16px 20px; color: #fff; font-size: 1rem; font-weight: 700;
+            border-bottom: 1px solid #2a2a4a; margin-bottom: 8px;
+        }
+        nav.sidebar .nav { flex: 1; }
+        nav.sidebar .nav-link {
+            color: var(--sidebar-text); padding: 10px 16px; border-radius: 8px; margin: 2px 8px;
+            font-size: 0.9rem; display: flex; align-items: center; text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        nav.sidebar .nav-link:hover { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        nav.sidebar .nav-link.active { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        nav.sidebar .nav-link i { width: 20px; margin-right: 8px; }
+        nav.sidebar .mt-auto { border-top: 1px solid #2a2a4a; padding: 12px; }
+
+        /* Offcanvas mobile sidebar */
+        .offcanvas { background: var(--sidebar-bg); }
+        .offcanvas .nav-link { color: var(--sidebar-text); padding: 10px 16px; border-radius: 8px; margin: 2px 8px; font-size: 0.9rem; display: flex; align-items: center; text-decoration: none; }
+        .offcanvas .nav-link:hover { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        .offcanvas .nav-link i { width: 20px; margin-right: 8px; }
+        .offcanvas .mt-auto { border-top: 1px solid #2a2a4a; padding: 12px; }
+
+        /* Main content */
+        .main-content { margin-left: var(--sidebar-width); padding: 24px; min-height: 100vh; }
+
+        /* ============================================
+           RESPONSIVE BREAKPOINTS
+           ============================================ */
+        /* Mobile (< 768px) */
+        @media (max-width: 767.98px) {
+            .main-content { margin-left: 0 !important; padding: 12px; padding-top: 60px; }
+            nav.sidebar { display: none; }
+            .stat-card { padding: 12px !important; }
+            .stat-value { font-size: 1.4rem !important; }
+            .page-header h4 { font-size: 1.2rem; }
+            .card-body { padding: 12px; }
+            .table { font-size: 0.8rem; }
+            .card { border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        }
+
+        /* Tablet (768px - 991.98px) */
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .main-content { margin-left: 0 !important; padding: 16px; }
+            nav.sidebar { display: none; }
+        }
+
+        /* Desktop (>= 992px) - hide mobile offcanvas toggle */
+        @media (min-width: 992px) {
+            #mobileSidebar { display: none !important; }
+            nav.d-lg-none { display: none !important; }
+        }
+
+        /* Large desktop (>= 1200px) */
+        @media (min-width: 1200px) {
+            .main-content { padding: 32px 40px; }
+            .container-fluid { max-width: 1400px; }
+        }
+
+        /* Hide desktop sidebar on mobile/tablet */
+        @media (max-width: 991.98px) {
+            nav.sidebar { display: none; }
+            .main-content { margin-left: 0 !important; }
+        }
+
+        /* ============================================
+           CARDS & PAGE HEADER
+           ============================================ */
+        .card { border: none; border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
+        .page-header { margin-bottom: 24px; }
+        .page-header h4 { font-weight: 700; color: var(--sidebar-bg); }
+
+        /* ============================================
+           BUTTONS
+           ============================================ */
+        .btn { transition: all 0.2s ease; border-radius: 8px; }
+        .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+        .btn-primary { background-color: var(--color-primary); border-color: var(--color-primary); }
+        .btn-primary:hover { background-color: var(--color-primary-dark); border-color: var(--color-primary-dark); box-shadow: 0 4px 12px rgba(13,110,253,0.35); }
+        .btn-success { background-color: var(--color-success); border-color: var(--color-success); }
+        .btn-danger { background-color: var(--color-danger); border-color: var(--color-danger); }
+        .btn-warning { background-color: var(--color-warning); border-color: var(--color-warning); color: #000; }
+        .btn-outline-secondary { color: var(--sidebar-text); border-color: var(--sidebar-text); border-radius: 8px; }
+        .btn-outline-secondary:hover { background: var(--sidebar-hover); color: #fff; border-color: var(--sidebar-hover); }
+
+        /* ============================================
+           FORM ELEMENTS
+           ============================================ */
+        .form-control, .form-select {
+            border-radius: 8px;
+            border-color: #dee2e6;
+            box-shadow: var(--shadow-sm);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(13,110,253,0.15);
+        }
+        .form-label { font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
+
+        /* ============================================
+           TEXT UTILITIES
+           ============================================ */
+        .text-primary { color: var(--color-primary) !important; }
+        .text-success { color: var(--color-success) !important; }
+        .text-danger { color: var(--color-danger) !important; }
+        .text-warning { color: var(--color-warning) !important; }
+        .text-info { color: var(--color-info) !important; }
+        .text-muted { color: var(--text-muted) !important; }
+
+        /* ============================================
+           BADGES & ALERTS
+           ============================================ */
+        .badge { border-radius: 6px; font-weight: 500; }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .badge-approved { background: #d1e7dd; color: #0f5132; }
+        .badge-rejected { background: #f8d7da; color: #842029; }
+
+        /* ============================================
+           TABLE STYLES
+           ============================================ */
+        .table { background: var(--card-bg); border-radius: var(--card-radius); overflow: hidden; }
+        .table thead th { background: var(--color-primary-bg); color: var(--color-primary-dark); font-weight: 600; border: none; }
+        .table tbody tr:hover { background: var(--color-primary-bg); }
+        .table td { vertical-align: middle; }
+
+        /* ============================================
+           STAT CARDS (for dashboard)
+           ============================================ */
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow);
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; margin-bottom: 12px;
+        }
+        .stat-icon.project { background: var(--icon-project-bg); }
+        .stat-icon.task { background: var(--icon-task-bg); }
+        .stat-icon.finance { background: var(--icon-finance-bg); }
+        .stat-icon.user { background: var(--icon-user-bg); }
+        .stat-value { font-size: 1.8rem; font-weight: 700; line-height: 1.2; }
+        .stat-label { color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; }
+        .sub-stat {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-top: 8px; margin-top: 8px; border-top: 1px solid #f0f0f0;
+            font-size: 0.8rem; color: var(--text-secondary);
+        }
+
+        /* ============================================
+           PROGRESS BARS
+           ============================================ */
+        .progress { border-radius: 8px; height: 8px; }
+        .progress-bar { border-radius: 8px; transition: width 0.6s ease; }
+
+        /* ============================================
+           MODAL
+           ============================================ */
+        .modal-content { border-radius: var(--card-radius); border: none; box-shadow: var(--shadow-lg); }
+        .modal-header { border-bottom: 1px solid #f0f0f0; border-radius: var(--card-radius) var(--card-radius) 0 0; }
+        .modal-footer { border-top: 1px solid #f0f0f0; }
+        .modal-title { font-weight: 700; color: var(--sidebar-bg); }
+
+        /* ============================================
+           OFFCANVAS HEADER
+           ============================================ */
+        .offcanvas-header { border-bottom: 1px solid #2a2a4a; padding: 16px; }
+
+        /* ============================================
+           SKELETON LOADING
+           ============================================ */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f2f5 25%, #e0e4e8 50%, #f0f2f5 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 4px;
+        }
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ============================================
+           EMPTY STATE
+           ============================================ */
+        .empty-state, .table-empty-state {
+            text-align: center; padding: 48px 24px; color: var(--text-muted);
+        }
+        .empty-state i, .table-empty-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.4; }
+        .empty-state p, .table-empty-text { font-size: 0.9rem; }
+
+        /* ============================================
+           ENHANCED MOBILE RESPONSIVE
+           ============================================ */
+        .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        @media (max-width: 575.98px) {
+            .modal .row.g-3 [class*="col-"] { margin-bottom: 8px; }
+            .modal .row.g-3 { margin-left: 0; margin-right: 0; }
+            .modal .row.g-3 > div { padding-left: 0; padding-right: 0; }
+        }
+        @media (max-width: 767.98px) {
+            .btn { min-height: 44px; padding: 10px 16px; font-size: 0.9rem; }
+            .btn-sm { min-height: 36px; padding: 6px 12px; font-size: 0.8rem; }
+            .btn-lg { min-height: 52px; padding: 14px 24px; font-size: 1rem; }
+            .page-header .d-flex { flex-direction: column; align-items: stretch !important; gap: 8px; }
+            .page-header .d-flex.gap-2 { gap: 8px !important; }
+            .page-header .btn { width: 100%; justify-content: center; }
+            .card-body.py-2.d-flex { flex-direction: column; align-items: stretch !important; gap: 8px; }
+            .card-body.py-2.d-flex .form-select, .card-body.py-2.d-flex .form-control { width: 100%; max-width: 100% !important; }
+            .table { font-size: 0.85rem; }
+            .table td, .table th { padding: 8px 10px; }
+            .table .btn-sm { padding: 4px 8px; min-height: 28px; min-width: 28px; }
+            .modal-dialog { margin: 0; max-width: 100%; }
+            .modal-content { border-radius: 0; min-height: 100vh; }
+            .modal-header, .modal-body, .modal-footer { padding: 16px 20px; }
+            .modal-footer { flex-direction: column; }
+            .modal-footer .btn { width: 100%; margin-bottom: 8px; }
+            .form-label { font-size: 0.9rem; margin-bottom: 4px; }
+            .form-control, .form-select { min-height: 44px; font-size: 16px; padding: 10px 12px; }
+            textarea.form-control { min-height: 100px; }
+            .card { border-radius: 8px; margin-left: -10px; margin-right: -10px; }
+            .actions-bar { flex-direction: column; gap: 8px; }
+            .actions-bar > * { width: 100%; }
+        }
+    
+        /* Mobile: prevent horizontal scroll */
+        .table-responsive {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        /* Mobile: larger touch targets */
+        @media (max-width: 767.98px) {
+            .btn { min-height: 44px; padding: 8px 16px; }
+            .btn-sm { min-height: 36px; padding: 6px 12px; }
+            .form-control { min-height: 44px; }
+            .form-select { min-height: 44px; }
+            /* Prevent iOS zoom on inputs */
+            input, select, textarea {
+                font-size: 16px !important;
+            }
+        }
+
+    </style>
+
+
+</head>
+<body>
+
+{% include "includes/fragment_sidebar.html" %}
+
+
+
+<!-- Main content -->
+<div class="main-content">
+    <!-- Mobile top bar -->
+    <div class="d-flex d-lg-none justify-content-between align-items-center mb-4">
+        <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar">
+            <i class="bi bi-list"></i>
+        </button>
+        <span class="fw-bold">收支管理</span>
+        <span></span>
+    </div>
+
+    <div class="page-header mb-4">
+        <h4><i class="bi bi-receipt me-2"></i>收支管理</h4>
+        <div class="text-muted small mt-1"><i class="bi bi-clock me-1"></i><span id="currentTime"></span></div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-3">
+        <div class="col-md-4 col-6">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:#e8f5e9;"><i class="bi bi-arrow-down-circle text-success"></i></div>
+                <div class="stat-value text-success" id="totalIncome">—</div>
+                <div class="stat-label">累计收入</div>
+            </div>
+        </div>
+        <div class="col-md-4 col-6">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:#ffebee;"><i class="bi bi-arrow-up-circle text-danger"></i></div>
+                <div class="stat-value text-danger" id="totalExpense">—</div>
+                <div class="stat-label">累计支出</div>
+            </div>
+        </div>
+        <div class="col-md-4 col-6">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:#e7f1ff;"><i class="bi bi-piggy-bank text-primary"></i></div>
+                <div class="stat-value text-primary" id="totalProfit">—</div>
+                <div class="stat-label">累计利润</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs + Actions -->
+    <div class="card p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <ul class="nav nav-pills" id="financeTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab">全部</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="income-tab" data-bs-toggle="tab" data-bs-target="#income" type="button" role="tab">收入</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="expense-tab" data-bs-toggle="tab" data-bs-target="#expense" type="button" role="tab">支出</button>
+                </li>
+            </ul>
+            <button class="btn btn-primary btn-sm" onclick="showFinanceModal()">
+                <i class="bi bi-plus-lg me-1"></i>新建记录
+            </button>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>类型</th>
+                            <th>金额</th>
+                            <th>项目</th>
+                            <th>类别</th>
+                            <th>日期</th>
+                            <th>备注</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="financeTableBody">
+                        <tr>
+                            <td colspan="7" class="table-empty-state">
+                                <i class="bi bi-hourglass-split table-empty-icon"></i>
+                                <p class="table-empty-text">加载中...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Finance Modal -->
+<div class="modal fade" id="financeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="financeModalTitle">新建收支记录</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="financeId">
+                <div class="mb-3">
+                    <label class="form-label">类型</label>
+                    <select class="form-select" id="financeType" required>
+                        <option value="income">收入</option>
+                        <option value="expense">支出</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">金额（元）</label>
+                    <input type="number" class="form-control" id="financeAmount" step="0.01" min="0" required placeholder="0.00">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">项目</label>
+                    <select class="form-select" id="financeProject">
+                        <option value="">— 通用 —</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">类别</label>
+                    <input type="text" class="form-control" id="financeCategory" placeholder="如：材料费、人工费">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">日期</label>
+                    <input type="date" class="form-control" id="financeDate" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">备注</label>
+                    <textarea class="form-control" id="financeRemark" rows="2" placeholder="可选"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveFinance()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/static/local/js/bootstrap.bundle.min.js"></script>
+<script>
+function getToken() {
+    return localStorage.getItem('auth_token');
+}
+
+function getAuthHeaders() {
+    return { 'Authorization': 'Token ' + getToken() };
+}
+
+function checkAuth() {
+    var token = getToken();
+    if (!token) { window.location.href = '/login/'; return false; }
+    return true;
+}
+
+function logout() {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('remember_me');
+    window.location.href = '/login/';
+}
+
+function showToast(message, type) {
+    var container = document.getElementById('toastContainer');
+    var id = 'toast-' + Date.now();
+    var bg = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+    var icon = type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : 'info-circle';
+    var html = '<div id="' + id + '" class="toast align-items-center text-white ' + bg + ' border-0" role="alert" data-bs-delay="3000">' +
+        '<div class="d-flex"><div class="toast-body"><i class="bi bi-' + icon + ' me-2"></i>' + message + '</div>' +
+        '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>';
+    container.innerHTML += html;
+    var el = document.getElementById(id);
+    bootstrap.Toast.getOrCreateInstance(el).show();
+    el.addEventListener('hidden.bs.toast', function() { el.remove(); });
+}
+
+function escHtml(s) {
+    if (!s && s !== 0) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function formatMoney(num) {
+    if (!num && num !== 0) return '0.00';
+    return parseFloat(num).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function updateTime() {
+    var now = new Date();
+    var opts = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+    var el = document.getElementById('currentTime');
+    if (el) el.textContent = now.toLocaleString('zh-CN', opts);
+}
+updateTime();
+setInterval(updateTime, 1000);
+
+var allRecords = [];
+
+function loadFinanceList() {
+    Promise.all([
+        fetch('/api/v1/finance/income/', { headers: getAuthHeaders() })
+            .then(function(r) {
+                if (r.status === 401) { window.location.href = '/login/'; return []; }
+                if (r.status === 403) { showToast('无权限查看收入数据', 'error'); return []; }
+                if (!r.ok) return [];
+                return r.json().then(function(d) { return d.results || d || []; });
+            }).catch(function() { return []; }),
+        fetch('/api/v1/finance/expense/', { headers: getAuthHeaders() })
+            .then(function(r) {
+                if (r.status === 401) { window.location.href = '/login/'; return []; }
+                if (r.status === 403) { showToast('无权限查看支出数据', 'error'); return []; }
+                if (!r.ok) return [];
+                return r.json().then(function(d) { return d.results || d || []; });
+            }).catch(function() { return []; }),
+        fetch('/api/v1/projects/', { headers: getAuthHeaders() })
+            .then(function(r) {
+                if (r.status === 401) { window.location.href = '/login/'; return []; }
+                if (!r.ok) return [];
+                return r.json().then(function(d) { return d.results || d || []; });
+            }).catch(function() { return []; })
+    ]).then(function(results) {
+        var incomes = results[0];
+        var expenses = results[1];
+        var projects = results[2];
+
+        allRecords = [];
+        incomes.forEach(function(i) { allRecords.push(Object.assign({}, i, { _type: 'income' })); });
+        expenses.forEach(function(e) { allRecords.push(Object.assign({}, e, { _type: 'expense' })); });
+        allRecords.sort(function(a, b) { return new Date(b.date || b.created_at || 0) - new Date(a.date || a.created_at || 0); });
+
+        var totalIncome = incomes.reduce(function(s, i) { return s + (parseFloat(i.amount) || 0); }, 0);
+        var totalExpense = expenses.reduce(function(s, e) { return s + (parseFloat(e.amount) || 0); }, 0);
+        document.getElementById('totalIncome').textContent = '¥' + totalIncome.toLocaleString('zh-CN');
+        document.getElementById('totalExpense').textContent = '¥' + totalExpense.toLocaleString('zh-CN');
+        document.getElementById('totalProfit').textContent = '¥' + (totalIncome - totalExpense).toLocaleString('zh-CN');
+
+        // Populate project dropdown in modal
+        var projectSelect = document.getElementById('financeProject');
+        projectSelect.innerHTML = '<option value="">— 通用 —</option>';
+        projects.forEach(function(p) {
+            projectSelect.innerHTML += '<option value="' + p.id + '">' + escHtml(p.name) + '</option>';
+        });
+
+        renderFinanceTable(allRecords);
+    }).catch(function() {
+        document.getElementById('financeTableBody').innerHTML =
+            '<tr><td colspan="7" class="table-empty-state">' +
+            '<i class="bi bi-exclamation-triangle table-empty-icon"></i>' +
+            '<p class="table-empty-text">数据加载失败，请刷新页面</p></td></tr>';
+    });
+}
+
+function renderFinanceTable(records) {
+    var tbody = document.getElementById('financeTableBody');
+    if (!records || !records.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="table-empty-state">' +
+            '<i class="bi bi-receipt table-empty-icon"></i>' +
+            '<p class="table-empty-text">暂无收支记录，试试新建一条吧</p></td></tr>';
+        return;
+    }
+    var html = '';
+    records.forEach(function(r) {
+        var isIncome = r._type === 'income';
+        var amountClass = isIncome ? 'text-income' : 'text-expense';
+        var amountPrefix = isIncome ? '+' : '-';
+        var badgeClass = isIncome ? 'badge-income' : 'badge-expense';
+        var badgeText = isIncome ? '收入' : '支出';
+        var projectName = r.project_name || r.project || '—';
+        var category = r.category || r.type || '—';
+        var date = r.date ? r.date.substring(0, 10) : (r.created_at ? r.created_at.substring(0, 10) : '—');
+        var remark = r.remark || r.description || '—';
+        var recordId = r.id;
+        html += '<tr>' +
+            '<td><span class="badge-status ' + badgeClass + '">' + badgeText + '</span></td>' +
+            '<td class="' + amountClass + '">' + amountPrefix + '¥' + formatMoney(r.amount) + '</td>' +
+            '<td>' + escHtml(projectName) + '</td>' +
+            '<td>' + escHtml(category) + '</td>' +
+            '<td>' + escHtml(date) + '</td>' +
+            '<td title="' + escHtml(remark) + '">' + escHtml(remark.substring(0, 20)) + '</td>' +
+            '<td>' +
+            '<button class="btn btn-sm btn-outline-primary me-1" onclick="editFinance(' + recordId + ')"><i class="bi bi-pencil"></i></button>' +
+            '<button class="btn btn-sm btn-outline-danger" onclick="deleteFinance(' + recordId + ',\'' + r._type + '\')"><i class="bi bi-trash"></i></button>' +
+            '</td></tr>';
+    });
+    tbody.innerHTML = html;
+}
+
+function showFinanceModal(id) {
+    document.getElementById('financeId').value = id || '';
+    document.getElementById('financeModalTitle').textContent = id ? '编辑收支记录' : '新建收支记录';
+    if (!id) {
+        document.getElementById('financeAmount').value = '';
+        document.getElementById('financeCategory').value = '';
+        document.getElementById('financeRemark').value = '';
+        document.getElementById('financeProject').value = '';
+        document.getElementById('financeDate').value = new Date().toISOString().substring(0, 10);
+        document.getElementById('financeType').value = 'income';
+    }
+    var modal = new bootstrap.Modal(document.getElementById('financeModal'));
+    modal.show();
+}
+
+function editFinance(id) {
+    var record = allRecords.find(function(r) { return r.id === id; });
+    if (!record) { showToast('记录不存在', 'error'); return; }
+    document.getElementById('financeId').value = id;
+    document.getElementById('financeModalTitle').textContent = '编辑收支记录';
+    document.getElementById('financeType').value = record._type;
+    document.getElementById('financeAmount').value = record.amount || '';
+    document.getElementById('financeCategory').value = record.category || record.type || '';
+    document.getElementById('financeRemark').value = record.remark || record.description || '';
+    document.getElementById('financeDate').value = record.date ? record.date.substring(0, 10) : '';
+    // Try to set project
+    var projectSelect = document.getElementById('financeProject');
+    for (var i = 0; i < projectSelect.options.length; i++) {
+        if (projectSelect.options[i].value == record.project || projectSelect.options[i].value == record.project_id) {
+            projectSelect.selectedIndex = i;
+            break;
+        }
+    }
+    var modal = new bootstrap.Modal(document.getElementById('financeModal'));
+    modal.show();
+}
+
+function saveFinance() {
+    var id = document.getElementById('financeId').value;
+    var type = document.getElementById('financeType').value;
+    var amount = document.getElementById('financeAmount').value;
+    var projectId = document.getElementById('financeProject').value;
+    var category = document.getElementById('financeCategory').value;
+    var date = document.getElementById('financeDate').value;
+    var remark = document.getElementById('financeRemark').value;
+
+    if (!amount || parseFloat(amount) <= 0) { showToast('请输入有效金额', 'error'); return; }
+    if (!date) { showToast('请选择日期', 'error'); return; }
+
+    var payload = {
+        amount: parseFloat(amount),
+        category: category,
+        date: date,
+        remark: remark
+    };
+    if (projectId) payload.project = parseInt(projectId);
+
+    var apiUrl = type === 'income' ? '/api/v1/finance/income/' : '/api/v1/finance/expense/';
+    var method = 'POST';
+
+    if (id) {
+        apiUrl += id + '/';
+        method = 'PUT';
+    }
+
+    fetch(apiUrl, {
+        method: method,
+        headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
+        body: JSON.stringify(payload)
+    }).then(function(r) {
+        if (r.status === 401) { window.location.href = '/login/'; return; }
+        if (r.status === 403) { showToast('无权限执行此操作', 'error'); return; }
+        if (!r.ok) { showToast('保存失败', 'error'); return; }
+        return r.json();
+    }).then(function() {
+        showToast(id ? '更新成功' : '创建成功', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('financeModal')).hide();
+        loadFinanceList();
+    }).catch(function() { showToast('网络请求失败', 'error'); });
+}
+
+function deleteFinance(id, type) {
+    if (!confirm('确定要删除这条记录吗？')) return;
+    var apiUrl = type === 'income' ? '/api/v1/finance/income/' : '/api/v1/finance/expense/';
+    fetch(apiUrl + id + '/', {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+    }).then(function(r) {
+        if (r.status === 401) { window.location.href = '/login/'; return; }
+        if (r.status === 403) { showToast('无权限删除', 'error'); return; }
+        if (r.status === 204 || r.ok) {
+            showToast('删除成功', 'success');
+            loadFinanceList();
+        } else {
+            showToast('删除失败', 'error');
+        }
+    }).catch(function() { showToast('网络请求失败', 'error'); });
+}
+
+// Tab filtering
+document.addEventListener('DOMContentLoaded', function() {
+    if (!checkAuth()) return;
+    loadFinanceList();
+
+    document.getElementById('financeTab').addEventListener('shown.bs.tab', function(e) {
+        var tabId = e.target.id;
+        if (tabId === 'income-tab') {
+            renderFinanceTable(allRecords.filter(function(r) { return r._type === 'income'; }));
+        } else if (tabId === 'expense-tab') {
+            renderFinanceTable(allRecords.filter(function(r) { return r._type === 'expense'; }));
+        } else {
+            renderFinanceTable(allRecords);
+        }
+    });
+});
+</script>
+
+
+<style>
+.bottom-tab-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border-top: 1px solid #dee2e6;
+    z-index: 1050;
+    padding: 0;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+}
+@media (max-width: 767.98px) {
+    .bottom-tab-nav { display: flex !important; }
+    body { padding-bottom: 60px !important; }
+    .main-content { margin-left: 0 !important; padding: 12px; padding-top: 60px !important; }
+}
+.bottom-tab-nav .tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 4px;
+    color: #6c757d;
+    text-decoration: none;
+    font-size: 0.65rem;
+    transition: color 0.2s;
+}
+.bottom-tab-nav .tab-item i { font-size: 1.2rem; margin-bottom: 2px; }
+.bottom-tab-nav .tab-item.active,
+.bottom-tab-nav .tab-item:hover { color: #0d6efd; }
+</style>
+
+<nav class="bottom-tab-nav">
+    <a href="/dashboard/" class="tab-item"><i class="bi bi-house"></i><span>首页</span></a>
+    <a href="/projects/" class="tab-item"><i class="bi bi-folder"></i><span>项目</span></a>
+    <a href="/files/" class="tab-item"><i class="bi bi-file-earmark"></i><span>文件</span></a>
+    <a href="/tasks/" class="tab-item"><i class="bi bi-kanban"></i><span>任务</span></a>
+    <a href="/system/" class="tab-item"><i class="bi bi-person"></i><span>我的</span></a>
+</nav>
+
+</body>
+</html>

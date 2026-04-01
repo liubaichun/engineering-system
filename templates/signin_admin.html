@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>签到管理 - 工程管理系统</title>
+    <link href="/static/local/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/local/css/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --color-primary: #0d6efd;
+            --color-primary-dark: #0b5ed7;
+            --color-primary-light: #d0e8ff;
+            --color-primary-bg: #e7f1ff;
+            --sidebar-bg: #1a1a2e;
+            --sidebar-hover: #16213e;
+            --sidebar-text: #b8bcd4;
+            --sidebar-text-active: #ffffff;
+            --sidebar-width: 240px;
+            --page-bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --card-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --card-radius: 12px;
+            --color-success: #198754;
+            --color-warning: #ffc107;
+            --color-danger: #dc3545;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--page-bg);
+            overflow-x: hidden;
+        }
+
+        /* ============================================
+           SIDEBAR
+           ============================================ */
+        nav.sidebar {
+            position: fixed; top: 0; left: 0; width: var(--sidebar-width);
+            height: 100vh; background: var(--sidebar-bg); z-index: 100; overflow-y: auto;
+            display: flex; flex-direction: column;
+        }
+        .sidebar-brand {
+            padding: 16px 20px; color: #fff; font-size: 1rem; font-weight: 700;
+            border-bottom: 1px solid #2a2a4a; margin-bottom: 8px;
+        }
+        nav.sidebar .nav { flex: 1; }
+        nav.sidebar .nav-link {
+            color: var(--sidebar-text); padding: 10px 16px; border-radius: 8px; margin: 2px 8px;
+            font-size: 0.9rem; display: flex; align-items: center; text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        nav.sidebar .nav-link:hover { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        nav.sidebar .nav-link.active { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        nav.sidebar .nav-link i { width: 20px; margin-right: 8px; }
+        nav.sidebar .mt-auto { border-top: 1px solid #2a2a4a; padding: 12px; }
+
+        .offcanvas { background: var(--sidebar-bg); }
+        .offcanvas .nav-link { color: var(--sidebar-text); padding: 10px 16px; border-radius: 8px; margin: 2px 8px; font-size: 0.9rem; display: flex; align-items: center; text-decoration: none; }
+        .offcanvas .nav-link:hover { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        .offcanvas .nav-link i { width: 20px; margin-right: 8px; }
+        .offcanvas .mt-auto { border-top: 1px solid #2a2a4a; padding: 12px; }
+
+        /* Main content */
+        .main-content { margin-left: var(--sidebar-width); padding: 24px; min-height: 100vh; }
+
+        /* ============================================
+           RESPONSIVE BREAKPOINTS
+           ============================================ */
+        @media (max-width: 767.98px) {
+            .main-content { margin-left: 0 !important; padding: 12px; padding-top: 60px; }
+            nav.sidebar { display: none; }
+            .page-header h4 { font-size: 1.2rem; }
+            .card-body { padding: 12px; }
+            .table { font-size: 0.8rem; }
+        }
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .main-content { margin-left: 0 !important; padding: 16px; }
+            nav.sidebar { display: none; }
+        }
+        @media (min-width: 992px) {
+            #mobileSidebar { display: none !important; }
+            nav.d-lg-none { display: none !important; }
+        }
+        @media (max-width: 991.98px) {
+            nav.sidebar { display: none; }
+            .main-content { margin-left: 0 !important; }
+        }
+
+        /* ============================================
+           CARDS & PAGE HEADER
+           ============================================ */
+        .card { border: none; border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
+        .page-header { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .page-header h4 { font-weight: 700; color: var(--sidebar-bg); margin: 0; }
+
+        /* ============================================
+           BUTTONS - 触摸友好
+           ============================================ */
+        .btn {
+            transition: all 0.2s ease;
+            border-radius: 8px;
+            min-height: 40px; /* 触摸友好最小高度 */
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+        .btn-primary { background-color: var(--color-primary); border-color: var(--color-primary); }
+        .btn-primary:hover { background-color: var(--color-primary-dark); border-color: var(--color-primary-dark); }
+        .btn-success { background-color: var(--color-success); border-color: var(--color-success); }
+        .btn-danger { background-color: var(--color-danger); border-color: var(--color-danger); }
+        .btn-sm { min-height: 32px; padding: 4px 10px; font-size: 0.8rem; }
+
+        /* ============================================
+           TABLE - 横向滚动
+           ============================================ */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .table { background: var(--card-bg); }
+        .table thead th { background: var(--color-primary-bg); color: var(--color-primary-dark); font-weight: 600; border: none; white-space: nowrap; }
+        .table tbody tr:hover { background: var(--color-primary-bg); }
+        .table td { vertical-align: middle; white-space: nowrap; }
+
+        /* ============================================
+           FORM - 移动端堆叠
+           ============================================ */
+        .form-control, .form-select {
+            border-radius: 8px;
+            border-color: #dee2e6;
+            box-shadow: var(--shadow-sm);
+            min-height: 44px; /* 触摸友好 */
+            font-size: 0.95rem;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(13,110,253,0.15);
+        }
+        .form-label { font-weight: 500; color: var(--text-primary); margin-bottom: 4px; font-size: 0.9rem; }
+
+        @media (max-width: 767.98px) {
+            .modal-dialog { margin: 0; }
+            .modal-content { border-radius: 0; min-height: 100vh; }
+            .form-group { margin-bottom: 12px; }
+        }
+
+        /* ============================================
+           STAT CARDS
+           ============================================ */
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow);
+            padding: 20px;
+        }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; margin-bottom: 12px;
+        }
+        .stat-value { font-size: 1.8rem; font-weight: 700; line-height: 1.2; }
+        .stat-label { color: #6c757d; font-size: 0.85rem; margin-top: 4px; }
+
+        /* ============================================
+           BADGES
+           ============================================ */
+        .badge { border-radius: 6px; font-weight: 500; }
+        .badge-active { background: #d1e7dd; color: #0f5132; }
+        .badge-inactive { background: #f8d7da; color: #842029; }
+
+        /* ============================================
+           TOAST
+           ============================================ */
+        .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; }
+        .custom-toast {
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            animation: toast-in 0.3s ease;
+        }
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ============================================
+           QR CODE DISPLAY
+           ============================================ */
+        .qrcode-container {
+            background: #fff;
+            border-radius: var(--card-radius);
+            box-shadow: var(--shadow-md);
+            padding: 24px;
+            text-align: center;
+        }
+        .qrcode-box {
+            background: #fff;
+            padding: 16px;
+            border-radius: 8px;
+            display: inline-block;
+            border: 1px solid #e8e8e8;
+        }
+        .qrcode-url {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            word-break: break-all;
+            margin-top: 12px;
+            color: #6c757d;
+        }
+    
+        /* Mobile: prevent horizontal scroll */
+        .table-responsive {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        /* Mobile: larger touch targets */
+        @media (max-width: 767.98px) {
+            .btn { min-height: 44px; padding: 8px 16px; }
+            .btn-sm { min-height: 36px; padding: 6px 12px; }
+            .form-control { min-height: 44px; }
+            .form-select { min-height: 44px; }
+            /* Prevent iOS zoom on inputs */
+            input, select, textarea {
+                font-size: 16px !important;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+{% include "includes/fragment_sidebar.html" %}
+
+
+
+<!-- Main content -->
+<div class="main-content">
+    <!-- Mobile top bar -->
+    <div class="d-flex d-lg-none justify-content-between align-items-center mb-4">
+        <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar">
+            <i class="bi bi-list"></i>
+        </button>
+        <span class="fw-bold">签到管理</span>
+        <span></span>
+    </div>
+
+    <div class="page-header">
+        <h4><i class="bi bi-qr-code-scan me-2"></i>签到管理</h4>
+        <button class="btn btn-primary" onclick="openCreateQRModal()">
+            <i class="bi bi-plus-lg me-1"></i>创建签到码
+        </button>
+    </div>
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4 col-6">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:#d0e8ff;">
+                    <i class="bi bi-qr-code text-primary"></i>
+                </div>
+                <div class="stat-value text-primary" id="totalQRCodes">-</div>
+                <div class="stat-label">签到码总数</div>
+            </div>
+        </div>
+        <div class="col-md-4 col-6">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:#d1e7dd;">
+                    <i class="bi bi-check-circle text-success"></i>
+                </div>
+                <div class="stat-value text-success" id="totalCheckins">-</div>
+                <div class="stat-label">今日签到人次</div>
+            </div>
+        </div>
+        <div class="col-md-4 col-6">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:#fff3e0;">
+                    <i class="bi bi-people text-warning"></i>
+                </div>
+                <div class="stat-value" id="uniquePersons">-</div>
+                <div class="stat-label">今日签到人数</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#qrcodes" type="button">
+                <i class="bi bi-qr-code me-1"></i>签到码管理
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#records" type="button">
+                <i class="bi bi-list-check me-1"></i>签到记录
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- QR Codes Tab -->
+        <div class="tab-pane fade show active" id="qrcodes">
+            <div class="card">
+                <div class="card-body">
+                    <!-- Filter -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <select class="form-select" id="qrProjectFilter" onchange="loadQRCodes()">
+                                <option value="">全部项目</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>名称</th>
+                                    <th>项目</th>
+                                    <th>签到码</th>
+                                    <th>有效时间</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="qrcodeTableBody">
+                                <tr><td colspan="6" class="text-center text-muted py-4">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Records Tab -->
+        <div class="tab-pane fade" id="records">
+            <div class="card">
+                <div class="card-body">
+                    <!-- Filter -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <select class="form-select" id="recordProjectFilter" onchange="loadRecords()">
+                                <option value="">全部项目</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="date" class="form-control" id="recordDateFrom" onchange="loadRecords()">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="date" class="form-control" id="recordDateTo" onchange="loadRecords()">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" placeholder="搜索姓名..." id="recordNameFilter" oninput="debounceLoadRecords()">
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>姓名</th>
+                                    <th>电话</th>
+                                    <th>单位</th>
+                                    <th>项目</th>
+                                    <th>类型</th>
+                                    <th>时间</th>
+                                    <th>地点</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recordsTableBody">
+                                <tr><td colspan="7" class="text-center text-muted py-4">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create QR Modal -->
+<div class="modal fade" id="createQRModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-qr-code me-2"></i>创建签到码</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">项目 <span class="text-danger">*</span></label>
+                    <select class="form-select" id="qrProject" required>
+                        <option value="">请选择项目</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">签到码名称 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="qrName" placeholder="例如：项目启动会签到">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">签到地点</label>
+                    <input type="text" class="form-control" id="qrLocation" placeholder="例如：会议室A">
+                </div>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="form-label">生效时间 <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control" id="qrValidFrom">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">失效时间 <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control" id="qrValidUntil">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="createQRCode()">创建</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- QR Detail Modal -->
+<div class="modal fade" id="qrDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-qr-code me-2"></i>签到码详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="qrcode-container">
+                    <h6 id="detailQRName" style="margin-bottom:16px;color:#1a1a2e;"></h6>
+                    <div class="qrcode-box">
+                        <canvas id="qrCanvas" width="200" height="200"></canvas>
+                    </div>
+                    <div class="qrcode-url" id="detailSigninUrl"></div>
+                    <div style="margin-top:12px;">
+                        <span id="detailQRStatus" class="badge badge-active">启用中</span>
+                    </div>
+                </div>
+                <div class="mt-3 p-3 bg-light rounded">
+                    <p class="mb-1 small"><strong>签到码：</strong><span id="detailQRCode"></span></p>
+                    <p class="mb-1 small"><strong>有效时间：</strong><span id="detailValidTime"></span></p>
+                    <p class="mb-0 small"><strong>签到地址：</strong><span id="detailLocation"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-outline-primary" onclick="copySigninUrl()">
+                    <i class="bi bi-clipboard me-1"></i>复制链接
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container">
+    <div id="toast" class="custom-toast" style="display:none;"></div>
+</div>
+
+<script src="/static/local/js/bootstrap.bundle.min.js"></script>
+<script src="/static/local/js/qrcode.min.js"></script>
+<script>
+let projectList = [];
+let currentQRCode = '';
+
+function checkAuth() {
+    const token = localStorage.getItem('auth_token');
+    if (!token) { window.location.href = '/login/'; return false; }
+    return true;
+}
+
+function authHeaders() {
+    return { 'Authorization': 'Token ' + localStorage.getItem('auth_token') };
+}
+
+function logout() {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('username');
+    window.location.href = '/login/';
+}
+
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 3000);
+}
+
+function debounceLoadRecords() {
+    clearTimeout(window.recordSearchTimer);
+    window.recordSearchTimer = setTimeout(loadRecords, 500);
+}
+
+function loadProjects() {
+    fetch('/api/v1/projects/', { headers: authHeaders() })
+        .then(r => r.ok ? r.json() : Promise.reject(r))
+        .then(data => {
+            projectList = data.results || data || [];
+            const opts = projectList.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            document.getElementById('qrProjectFilter').innerHTML = '<option value="">全部项目</option>' + opts;
+            document.getElementById('recordProjectFilter').innerHTML = '<option value="">全部项目</option>' + opts;
+            document.getElementById('qrProject').innerHTML = '<option value="">请选择项目</option>' + opts;
+        })
+        .catch(() => showToast('加载项目失败'));
+}
+
+function loadQRCodes() {
+    const projectId = document.getElementById('qrProjectFilter').value;
+    let url = '/api/v1/attendance/qrcodes/';
+    if (projectId) url += `?project_id=${projectId}`;
+    
+    fetch(url, { headers: authHeaders() })
+        .then(r => r.ok ? r.json() : Promise.reject(r))
+        .then(data => {
+            if (data.code === 0) {
+                renderQRCodes(data.data);
+                document.getElementById('totalQRCodes').textContent = data.data.length;
+            }
+        })
+        .catch(() => showToast('加载签到码失败'));
+}
+
+function renderQRCodes(qrcodes) {
+    const tbody = document.getElementById('qrcodeTableBody');
+    if (!qrcodes.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">暂无签到码</td></tr>';
+        return;
+    }
+    const now = new Date();
+    tbody.innerHTML = qrcodes.map(qr => {
+        const validUntil = new Date(qr.valid_until);
+        const isExpired = now > validUntil;
+        const isUsed = qr.is_used;
+        let statusBadge = isExpired ? '<span class="badge bg-secondary">已过期</span>' : 
+                          isUsed ? '<span class="badge bg-success">已使用</span>' : '<span class="badge bg-primary">可用</span>';
+        return `<tr>
+            <td>${qr.project_name}</td>
+            <td>${qr.group_name || '-'}</td>
+            <td><code>${qr.qr_id}</code></td>
+            <td>${qr.valid_from ? qr.valid_from.slice(0,16) : '-'} ~ ${qr.valid_until ? qr.valid_until.slice(0,16) : '-'}</td>
+            <td>${statusBadge}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="showQRDetail('${qr.qr_id}')">
+                    <i class="bi bi-qr-code"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function loadRecords() {
+    const projectId = document.getElementById('recordProjectFilter').value;
+    const dateFrom = document.getElementById('recordDateFrom').value;
+    const dateTo = document.getElementById('recordDateTo').value;
+    const personName = document.getElementById('recordNameFilter').value;
+    
+    let params = new URLSearchParams();
+    if (projectId) params.append('project_id', projectId);
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo + ' 23:59:59');
+    if (personName) params.append('person_name', personName);
+    
+    fetch(`/api/v1/attendance/records/?${params}`, { headers: authHeaders() })
+        .then(r => r.ok ? r.json() : Promise.reject(r))
+        .then(data => {
+            if (data.code === 0) {
+                renderRecords(data.data);
+                // 更新统计
+                const today = new Date().toISOString().slice(0,10);
+                const todayRecords = data.data.filter(r => r.check_in_time && r.check_in_time.slice(0,10) === today);
+                document.getElementById('totalCheckins').textContent = todayRecords.length;
+                const uniqueNames = new Set(todayRecords.map(r => r.worker_name));
+                document.getElementById('uniquePersons').textContent = uniqueNames.size || '-';
+            }
+        })
+        .catch(() => showToast('加载签到记录失败'));
+}
+
+function renderRecords(records) {
+    const tbody = document.getElementById('recordsTableBody');
+    if (!records.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">暂无签到记录</td></tr>';
+        return;
+    }
+    tbody.innerHTML = records.map(r => {
+        const typeBadge = r.sign_type === 'checkin' ? 
+            '<span class="badge" style="background:#d1e7dd;color:#0f5132;">签到</span>' :
+            '<span class="badge" style="background:#fff3e0;color:#e65100;">签退</span>';
+        return `<tr>
+            <td>${r.person_name}</td>
+            <td>${r.person_phone || '-'}</td>
+            <td>${r.person_company || '-'}</td>
+            <td>${r.project_name || '-'}</td>
+            <td>${typeBadge}</td>
+            <td>${r.sign_time ? r.sign_time.slice(0,16) : '-'}</td>
+            <td>${r.location || '-'}</td>
+        </tr>`;
+    }).join('');
+}
+
+function openCreateQRModal() {
+    document.getElementById('qrName').value = '';
+    document.getElementById('qrLocation').value = '';
+    document.getElementById('qrValidFrom').value = '';
+    document.getElementById('qrValidUntil').value = '';
+    if (projectList.length) document.getElementById('qrProject').value = projectList[0].id;
+    new bootstrap.Modal(document.getElementById('createQRModal')).show();
+}
+
+function createQRCode() {
+    const projectId = document.getElementById('qrProject').value;
+    const name = document.getElementById('qrName').value.trim();
+    const location = document.getElementById('qrLocation').value.trim();
+    const validFrom = document.getElementById('qrValidFrom').value;
+    const validUntil = document.getElementById('qrValidUntil').value;
+    
+    if (!projectId) { showToast('请选择项目'); return; }
+    if (!name) { showToast('请填写签到码名称'); return; }
+    if (!validFrom || !validUntil) { showToast('请设置有效时间'); return; }
+    
+    fetch('/api/v1/attendance/qrcodes/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ project_id: projectId, valid_hours: 24 })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.code === 0) {
+            showToast('创建成功');
+            bootstrap.Modal.getInstance(document.getElementById('createQRModal')).hide();
+            loadQRCodes();
+            // 显示新创建的二维码
+            showQRDetail(data.data.qr_id);
+        } else {
+            showToast(data.message || '创建失败');
+        }
+    })
+    .catch(() => showToast('网络错误'));
+}
+
+function showQRDetail(code) {
+    currentQRCode = code;
+    fetch(`/api/v1/projects/signin/qrcode/`, { headers: authHeaders() })
+        .then(r => r.json())
+        .then(data => {
+            if (data.code === 0) {
+                const qr = data.data.find(q => q.qr_id === code);
+                if (qr) {
+                    document.getElementById('detailQRName').textContent = qr.project_name + (qr.group_name ? ' - ' + qr.group_name : '');
+                    document.getElementById('detailQRCode').textContent = qr.qr_id;
+                    document.getElementById('detailValidTime').textContent = `${qr.valid_from ? qr.valid_from.slice(0,16) : '-'} ~ ${qr.valid_until ? qr.valid_until.slice(0,16) : '-'}`;
+                    document.getElementById('detailLocation').textContent = qr.group_name || '-';
+                    document.getElementById('detailQRStatus').className = qr.is_used ? 'badge bg-success' : 'badge bg-primary';
+                    document.getElementById('detailQRStatus').textContent = qr.is_used ? '已使用' : '可用';
+                    
+                    const signinUrl = `${window.location.origin}/signin/?qr_id=${qr.qr_id}`;
+                    document.getElementById('detailSigninUrl').textContent = signinUrl;
+                    
+                    // 生成二维码
+                    const canvas = document.getElementById('qrCanvas');
+                    canvas.innerHTML = '';
+                    new QRCode(canvas, { text: signinUrl, width: 200, height: 200 });
+                    
+                    new bootstrap.Modal(document.getElementById('qrDetailModal')).show();
+                }
+            }
+        })
+        .catch(() => showToast('加载失败'));
+}
+
+function copySigninUrl() {
+    const url = document.getElementById('detailSigninUrl').textContent;
+    navigator.clipboard.writeText(url).then(() => showToast('链接已复制'));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (!checkAuth()) return;
+    
+    // 设置日期默认值为今天
+    const today = new Date().toISOString().slice(0,10);
+    document.getElementById('recordDateFrom').value = today;
+    document.getElementById('recordDateTo').value = today;
+    
+    // 设置默认有效时间
+    const now = new Date();
+    const later = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    document.getElementById('qrValidFrom').value = now.toISOString().slice(0,16);
+    document.getElementById('qrValidUntil').value = later.toISOString().slice(0,16);
+    
+    loadProjects();
+    loadQRCodes();
+    loadRecords();
+});
+</script>
+
+
+<style>
+.bottom-tab-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border-top: 1px solid #dee2e6;
+    z-index: 1050;
+    padding: 0;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+}
+@media (max-width: 767.98px) {
+    .bottom-tab-nav { display: flex !important; }
+    body { padding-bottom: 60px !important; }
+    .main-content { margin-left: 0 !important; padding: 12px; padding-top: 60px !important; }
+}
+.bottom-tab-nav .tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 4px;
+    color: #6c757d;
+    text-decoration: none;
+    font-size: 0.65rem;
+    transition: color 0.2s;
+}
+.bottom-tab-nav .tab-item i { font-size: 1.2rem; margin-bottom: 2px; }
+.bottom-tab-nav .tab-item.active,
+.bottom-tab-nav .tab-item:hover { color: #0d6efd; }
+</style>
+
+<nav class="bottom-tab-nav">
+    <a href="/dashboard/" class="tab-item"><i class="bi bi-house"></i><span>首页</span></a>
+    <a href="/projects/" class="tab-item"><i class="bi bi-folder"></i><span>项目</span></a>
+    <a href="/tasks/" class="tab-item"><i class="bi bi-kanban"></i><span>任务</span></a>
+    <a href="/signin/" class="tab-item"><i class="bi bi-qr-code-scan"></i><span>考勤</span></a>
+    <a href="/system/" class="tab-item"><i class="bi bi-person"></i><span>我的</span></a>
+</nav>
+
+</body>
+</html>

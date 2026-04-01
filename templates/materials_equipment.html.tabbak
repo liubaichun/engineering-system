@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物料管理 - 工程管理系统</title>
+    <link href="/static/local/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/local/css/bootstrap-icons.min.css" rel="stylesheet">
+        <style>
+        /* ============================================
+           CSS ROOT VARIABLES - Global Color System
+           ============================================ */
+        :root {
+            /* Primary Colors */
+            --color-primary: #0d6efd;
+            --color-primary-dark: #0b5ed7;
+            --color-primary-light: #d0e8ff;
+            --color-primary-bg: #e7f1ff;
+
+            /* Sidebar */
+            --sidebar-bg: #1a1a2e;
+            --sidebar-hover: #16213e;
+            --sidebar-text: #b8bcd4;
+            --sidebar-text-active: #ffffff;
+            --sidebar-width: 240px;
+
+            /* Page & Card */
+            --page-bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --card-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --card-radius: 12px;
+
+            /* Status Colors */
+            --color-success: #198754;
+            --color-warning: #ffc107;
+            --color-danger: #dc3545;
+            --color-info: #0dcaf0;
+            --color-purple: #6f42c1;
+            --color-pink: #e91e63;
+
+            /* Progress Gradient */
+            --progress-low: #dc3545;
+            --progress-mid: #ffc107;
+            --progress-high: #198754;
+
+            /* Text */
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --text-muted: #adb5bd;
+
+            /* Timeline Dot Colors */
+            --dot-project: #0d6efd;
+            --dot-task: #198754;
+            --dot-finance: #fd7e14;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.15);
+
+            /* Stat Icon Backgrounds */
+            --icon-project-bg: #d0e8ff;
+            --icon-task-bg: #fff3e0;
+            --icon-finance-bg: #e8f5e9;
+            --icon-user-bg: #f3e5f5;
+        }
+
+        /* ============================================
+           BASE STYLES
+           ============================================ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--page-bg);
+            overflow-x: hidden;
+        }
+
+        /* ============================================
+           SIDEBAR
+           ============================================ */
+        nav.sidebar {
+            position: fixed; top: 0; left: 0; width: var(--sidebar-width);
+            height: 100vh; background: var(--sidebar-bg); z-index: 100; overflow-y: auto;
+            display: flex; flex-direction: column;
+        }
+        .sidebar-brand {
+            padding: 16px 20px; color: #fff; font-size: 1rem; font-weight: 700;
+            border-bottom: 1px solid #2a2a4a; margin-bottom: 8px;
+        }
+        nav.sidebar .nav { flex: 1; }
+        nav.sidebar .nav-link {
+            color: var(--sidebar-text); padding: 10px 16px; border-radius: 8px; margin: 2px 8px;
+            font-size: 0.9rem; display: flex; align-items: center; text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        nav.sidebar .nav-link:hover { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        nav.sidebar .nav-link.active { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        nav.sidebar .nav-link i { width: 20px; margin-right: 8px; }
+        nav.sidebar .mt-auto { border-top: 1px solid #2a2a4a; padding: 12px; }
+
+        /* Offcanvas mobile sidebar */
+        .offcanvas { background: var(--sidebar-bg); }
+        .offcanvas .nav-link { color: var(--sidebar-text); padding: 10px 16px; border-radius: 8px; margin: 2px 8px; font-size: 0.9rem; display: flex; align-items: center; text-decoration: none; }
+        .offcanvas .nav-link:hover { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        .offcanvas .nav-link i { width: 20px; margin-right: 8px; }
+        .offcanvas .mt-auto { border-top: 1px solid #2a2a4a; padding: 12px; }
+
+        /* Main content */
+        .main-content { margin-left: var(--sidebar-width); padding: 24px; min-height: 100vh; }
+
+        /* ============================================
+           RESPONSIVE BREAKPOINTS
+           ============================================ */
+        /* Mobile (< 768px) */
+        @media (max-width: 767.98px) {
+            .main-content { margin-left: 0 !important; padding: 12px; padding-top: 60px; }
+            nav.sidebar { display: none; }
+            .stat-card { padding: 12px !important; }
+            .stat-value { font-size: 1.4rem !important; }
+            .page-header h4 { font-size: 1.2rem; }
+            .card-body { padding: 12px; }
+            .table { font-size: 0.8rem; }
+            .card { border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        }
+
+        /* Tablet (768px - 991.98px) */
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .main-content { margin-left: 0 !important; padding: 16px; }
+            nav.sidebar { display: none; }
+        }
+
+        /* Desktop (>= 992px) - hide mobile offcanvas toggle */
+        @media (min-width: 992px) {
+            #mobileSidebar { display: none !important; }
+            nav.d-lg-none { display: none !important; }
+        }
+
+        /* Large desktop (>= 1200px) */
+        @media (min-width: 1200px) {
+            .main-content { padding: 32px 40px; }
+            .container-fluid { max-width: 1400px; }
+        }
+
+        /* Hide desktop sidebar on mobile/tablet */
+        @media (max-width: 991.98px) {
+            nav.sidebar { display: none; }
+            .main-content { margin-left: 0 !important; }
+        }
+
+        /* ============================================
+           CARDS & PAGE HEADER
+           ============================================ */
+        .card { border: none; border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
+        .page-header { margin-bottom: 24px; }
+        .page-header h4 { font-weight: 700; color: var(--sidebar-bg); }
+
+        /* ============================================
+           BUTTONS
+           ============================================ */
+        .btn { transition: all 0.2s ease; border-radius: 8px; }
+        .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+        .btn-primary { background-color: var(--color-primary); border-color: var(--color-primary); }
+        .btn-primary:hover { background-color: var(--color-primary-dark); border-color: var(--color-primary-dark); box-shadow: 0 4px 12px rgba(13,110,253,0.35); }
+        .btn-success { background-color: var(--color-success); border-color: var(--color-success); }
+        .btn-danger { background-color: var(--color-danger); border-color: var(--color-danger); }
+        .btn-warning { background-color: var(--color-warning); border-color: var(--color-warning); color: #000; }
+        .btn-outline-secondary { color: var(--sidebar-text); border-color: var(--sidebar-text); border-radius: 8px; }
+        .btn-outline-secondary:hover { background: var(--sidebar-hover); color: #fff; border-color: var(--sidebar-hover); }
+
+        /* ============================================
+           FORM ELEMENTS
+           ============================================ */
+        .form-control, .form-select {
+            border-radius: 8px;
+            border-color: #dee2e6;
+            box-shadow: var(--shadow-sm);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(13,110,253,0.15);
+        }
+        .form-label { font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
+
+        /* ============================================
+           TEXT UTILITIES
+           ============================================ */
+        .text-primary { color: var(--color-primary) !important; }
+        .text-success { color: var(--color-success) !important; }
+        .text-danger { color: var(--color-danger) !important; }
+        .text-warning { color: var(--color-warning) !important; }
+        .text-info { color: var(--color-info) !important; }
+        .text-muted { color: var(--text-muted) !important; }
+
+        /* ============================================
+           BADGES & ALERTS
+           ============================================ */
+        .badge { border-radius: 6px; font-weight: 500; }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .badge-approved { background: #d1e7dd; color: #0f5132; }
+        .badge-rejected { background: #f8d7da; color: #842029; }
+
+        /* ============================================
+           TABLE STYLES
+           ============================================ */
+        .table { background: var(--card-bg); border-radius: var(--card-radius); overflow: hidden; }
+        .table thead th { background: var(--color-primary-bg); color: var(--color-primary-dark); font-weight: 600; border: none; }
+        .table tbody tr:hover { background: var(--color-primary-bg); }
+        .table td { vertical-align: middle; }
+
+        /* ============================================
+           STAT CARDS (for dashboard)
+           ============================================ */
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow);
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; margin-bottom: 12px;
+        }
+        .stat-icon.project { background: var(--icon-project-bg); }
+        .stat-icon.task { background: var(--icon-task-bg); }
+        .stat-icon.finance { background: var(--icon-finance-bg); }
+        .stat-icon.user { background: var(--icon-user-bg); }
+        .stat-value { font-size: 1.8rem; font-weight: 700; line-height: 1.2; }
+        .stat-label { color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; }
+        .sub-stat {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-top: 8px; margin-top: 8px; border-top: 1px solid #f0f0f0;
+            font-size: 0.8rem; color: var(--text-secondary);
+        }
+
+        /* ============================================
+           PROGRESS BARS
+           ============================================ */
+        .progress { border-radius: 8px; height: 8px; }
+        .progress-bar { border-radius: 8px; transition: width 0.6s ease; }
+
+        /* ============================================
+           MODAL
+           ============================================ */
+        .modal-content { border-radius: var(--card-radius); border: none; box-shadow: var(--shadow-lg); }
+        .modal-header { border-bottom: 1px solid #f0f0f0; border-radius: var(--card-radius) var(--card-radius) 0 0; }
+        .modal-footer { border-top: 1px solid #f0f0f0; }
+        .modal-title { font-weight: 700; color: var(--sidebar-bg); }
+
+        /* ============================================
+           OFFCANVAS HEADER
+           ============================================ */
+        .offcanvas-header { border-bottom: 1px solid #2a2a4a; padding: 16px; }
+
+        /* ============================================
+           SKELETON LOADING
+           ============================================ */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f2f5 25%, #e0e4e8 50%, #f0f2f5 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 4px;
+        }
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ============================================
+           EMPTY STATE
+           ============================================ */
+        .empty-state {
+            text-align: center; padding: 48px 24px; color: var(--text-muted);
+        }
+        .empty-state i { font-size: 3rem; margin-bottom: 12px; opacity: 0.4; }
+        .empty-state p { font-size: 0.9rem; }
+
+        /* ============================================
+           ENHANCED MOBILE RESPONSIVE
+           ============================================ */
+        .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        @media (max-width: 575.98px) {
+            .modal .row.g-3 [class*="col-"] { margin-bottom: 8px; }
+            .modal .row.g-3 { margin-left: 0; margin-right: 0; }
+            .modal .row.g-3 > div { padding-left: 0; padding-right: 0; }
+        }
+        @media (max-width: 767.98px) {
+            .btn { min-height: 44px; padding: 10px 16px; font-size: 0.9rem; }
+            .btn-sm { min-height: 36px; padding: 6px 12px; font-size: 0.8rem; }
+            .btn-lg { min-height: 52px; padding: 14px 24px; font-size: 1rem; }
+            .page-header .d-flex { flex-direction: column; align-items: stretch !important; gap: 8px; }
+            .page-header .d-flex.gap-2 { gap: 8px !important; }
+            .page-header .btn { width: 100%; justify-content: center; }
+            .card-body.py-2.d-flex { flex-direction: column; align-items: stretch !important; gap: 8px; }
+            .card-body.py-2.d-flex .form-select, .card-body.py-2.d-flex .form-control { width: 100%; max-width: 100% !important; }
+            .table { font-size: 0.85rem; }
+            .table td, .table th { padding: 8px 10px; }
+            .table .btn-sm { padding: 4px 8px; min-height: 28px; min-width: 28px; }
+            .modal-dialog { margin: 0; max-width: 100%; }
+            .modal-content { border-radius: 0; min-height: 100vh; }
+            .modal-header, .modal-body, .modal-footer { padding: 16px 20px; }
+            .modal-footer { flex-direction: column; }
+            .modal-footer .btn { width: 100%; margin-bottom: 8px; }
+            .form-label { font-size: 0.9rem; margin-bottom: 4px; }
+            .form-control, .form-select { min-height: 44px; font-size: 16px; padding: 10px 12px; }
+            textarea.form-control { min-height: 100px; }
+            .card { border-radius: 8px; margin-left: -10px; margin-right: -10px; }
+            .actions-bar { flex-direction: column; gap: 8px; }
+            .actions-bar > * { width: 100%; }
+        }
+    </style>
+
+
+</head>
+<body>
+{% include "includes/fragment_sidebar.html" %}
+
+
+    <div class="main-content">
+        <!-- Mobile top bar -->
+        <div class="d-flex d-lg-none justify-content-between align-items-center mb-4">
+            <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar"><i class="bi bi-list"></i></button>
+            <span class="fw-bold">📦 物料管理</span>
+            <span></span>
+        </div>
+        <div class="page-header"><h4>📦 物料管理</h4></div>
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#matPane" type="button"><i class="bi bi-box-seam me-1"></i>物料管理</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#eqPane" type="button"><i class="bi bi-tools me-1"></i>设备管理</button></li>
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="matPane">
+                <div class="card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted small">共 <span id="matCount">0</span> 条物料</span>
+                        <button class="btn btn-primary btn-sm" onclick="openMatModal()"><i class="bi bi-plus-lg me-1"></i>新增物料</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead><tr><th>名称</th><th>编码</th><th>规格</th><th>单位</th><th>库存</th><th>预警</th><th>单价</th><th>状态</th><th>操作</th></tr></thead>
+                            <tbody id="matTable"></tbody>
+                        </table>
+                    </div>
+                    <div class="empty-state" id="matEmpty" style="display:none;"><i class="bi bi-inbox"></i><p>暂无物料数据</p></div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="eqPane">
+                <div class="card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted small">共 <span id="eqCount">0</span> 条设备</span>
+                        <button class="btn btn-primary btn-sm" onclick="openEqModal()"><i class="bi bi-plus-lg me-1"></i>新增设备</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead><tr><th>名称</th><th>编码</th><th>型号</th><th>状态</th><th>购买日期</th><th>维保到期</th><th>操作</th></tr></thead>
+                            <tbody id="eqTable"></tbody>
+                        </table>
+                    </div>
+                    <div class="empty-state" id="eqEmpty" style="display:none;"><i class="bi bi-inbox"></i><p>暂无设备数据</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="matModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="matModalTitle">新增物料</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="matId"><div class="row g-3"><div class="col-md-6"><label class="form-label">名称 <span class="text-danger">*</span></label><input type="text" class="form-control" id="matName"></div><div class="col-md-6"><label class="form-label">编码</label><input type="text" class="form-control" id="matCode"></div><div class="col-md-6"><label class="form-label">规格</label><input type="text" class="form-control" id="matSpec"></div><div class="col-md-6"><label class="form-label">单位</label><input type="text" class="form-control" id="matUnit"></div><div class="col-md-4"><label class="form-label">库存</label><input type="number" class="form-control" id="matStock" value="0"></div><div class="col-md-4"><label class="form-label">预警阈值</label><input type="number" class="form-control" id="matAlert" value="10"></div><div class="col-md-4"><label class="form-label">单价(元)</label><input type="number" class="form-control" id="matPrice" value="0" step="0.01"></div><div class="col-12"><label class="form-label">备注</label><textarea class="form-control" id="matRemark" rows="2"></textarea></div></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary btn-sm" id="matSaveBtn" onclick="saveMat()">保存</button></div></div></div></div>
+    <div class="modal fade" id="eqModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="eqModalTitle">新增设备</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="eqId"><div class="row g-3"><div class="col-md-6"><label class="form-label">名称 <span class="text-danger">*</span></label><input type="text" class="form-control" id="eqName"></div><div class="col-md-6"><label class="form-label">编码</label><input type="text" class="form-control" id="eqCode"></div><div class="col-md-6"><label class="form-label">型号</label><input type="text" class="form-control" id="eqModel"></div><div class="col-md-6"><label class="form-label">状态</label><select class="form-select" id="eqStatus"><option value="normal">正常使用</option><option value="maintenance">维修中</option><option value="idle">闲置</option><option value="scrapped">已报废</option></select></div><div class="col-md-6"><label class="form-label">购买日期</label><input type="date" class="form-control" id="eqBuyDate"></div><div class="col-md-6"><label class="form-label">维保到期</label><input type="date" class="form-control" id="eqMaintDate"></div><div class="col-12"><label class="form-label">备注</label><textarea class="form-control" id="eqRemark" rows="2"></textarea></div></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary btn-sm" id="eqSaveBtn" onclick="saveEq()">保存</button></div></div></div></div>
+    <script src="/static/local/js/bootstrap.bundle.min.js"></script>
+    <script>
+        var API = '/api/v1';
+        function getToken() { return localStorage.getItem('auth_token') || ''; }
+        function authHeaders() { return { 'Authorization': 'Token ' + getToken(), 'Content-Type': 'application/json' }; }
+        function logout() { localStorage.removeItem('auth_token'); localStorage.removeItem('username'); window.location.href = '/login/'; }
+        function checkAuth() { if (!getToken()) { window.location.href = '/login/'; return false; } return true; }
+        function esc(s) { return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function matBadge(s) { var m = { normal: ['正常','ok'], low: ['库存不足','warn'], out: ['已用尽','danger'] }; var x = m[s] || [s,'secondary']; return '<span class="badge-status badge-' + x[1] + '">' + x[0] + '</span>'; }
+        function eqBadge(s) { var m = { normal: ['正常使用','ok'], maintenance: ['维修中','warn'], idle: ['闲置','secondary'], scrapped: ['已报废','danger'] }; var x = m[s] || [s,'secondary']; return '<span class="badge-status badge-' + x[1] + '">' + x[0] + '</span>'; }
+        function loadMats() { fetch(API + '/inventory/materials/', { headers: authHeaders() }).then(function(r) { return r.ok ? r.json() : []; }).then(function(d) { renderMats(Array.isArray(d) ? d : (d.results || [])); }).catch(function() { renderMats([]); }); }
+        function renderMats(list) { document.getElementById('matCount').textContent = list.length; var tb = document.getElementById('matTable'); document.getElementById('matEmpty').style.display = list.length ? 'none' : 'block'; tb.innerHTML = list.map(function(m) { var st = m.stock <= 0 ? 'out' : (m.alert_threshold && m.stock <= m.alert_threshold ? 'low' : 'normal'); return '<tr><td><strong>' + esc(m.name) + '</strong></td><td><code>' + esc(m.code || '-') + '</code></td><td>' + esc(m.spec || '-') + '</td><td>' + esc(m.unit || '-') + '</td><td><strong>' + m.stock + '</strong></td><td>' + (m.alert_threshold || 10) + '</td><td>' + (m.price ? '¥' + parseFloat(m.price).toFixed(2) : '-') + '</td><td>' + matBadge(st) + '</td><td><button class="btn btn-outline-primary btn-sm me-1" onclick="editMat(' + m.id + ')"><i class="bi bi-pencil"></i></button><button class="btn btn-outline-danger btn-sm" onclick="delMat(' + m.id + ')"><i class="bi bi-trash"></i></button></td></tr>'; }).join(''); }
+        var matModal;
+        function openMatModal() { ['matId','matName','matCode','matSpec','matUnit','matRemark'].forEach(function(id) { document.getElementById(id).value = ''; }); document.getElementById('matStock').value='0'; document.getElementById('matAlert').value='10'; document.getElementById('matPrice').value='0'; document.getElementById('matModalTitle').textContent = '新增物料'; matModal = new bootstrap.Modal(document.getElementById('matModal')); matModal.show(); }
+        function editMat(id) { fetch(API + '/inventory/materials/' + id + '/', { headers: authHeaders() }).then(function(r) { return r.json(); }).then(function(m) { document.getElementById('matId').value = m.id; ['matName','matCode','matSpec','matUnit','matRemark'].forEach(function(x) { document.getElementById(x).value = m[x.replace('mat','').toLowerCase()] || ''; }); document.getElementById('matStock').value = m.stock || 0; document.getElementById('matAlert').value = m.alert_threshold || 10; document.getElementById('matPrice').value = m.price || 0; document.getElementById('matModalTitle').textContent = '编辑物料'; matModal = new bootstrap.Modal(document.getElementById('matModal')); matModal.show(); }).catch(function() {}); }
+        function saveMat() { var id = document.getElementById('matId').value; var d = { name: document.getElementById('matName').value, code: document.getElementById('matCode').value, spec: document.getElementById('matSpec').value, unit: document.getElementById('matUnit').value, stock: parseInt(document.getElementById('matStock').value) || 0, alert_threshold: parseInt(document.getElementById('matAlert').value) || 10, price: parseFloat(document.getElementById('matPrice').value) || 0, remark: document.getElementById('matRemark').value }; if (!d.name) { alert('请输入物料名称'); return; } var btn = document.getElementById('matSaveBtn'); btn.disabled = true; btn.textContent = '保存中...'; fetch((id ? API + '/inventory/materials/' + id + '/' : API + '/inventory/materials/'), { method: id ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(d) }).then(function(r) { if (r.ok) { matModal.hide(); loadMats(); } else { alert('保存失败'); btn.disabled = false; btn.textContent = '保存'; } }).catch(function() { alert('保存失败'); btn.disabled = false; btn.textContent = '保存'; }); }
+        function delMat(id) { if (confirm('确定要删除这条物料记录吗？')) fetch(API + '/inventory/materials/' + id + '/', { method: 'DELETE', headers: authHeaders() }).then(function(r) { if (r.ok || r.status === 204) loadMats(); else alert('删除失败'); }).catch(function() { alert('删除失败'); }); }
+        function loadEqs() { fetch(API + '/inventory/equipment/', { headers: authHeaders() }).then(function(r) { return r.ok ? r.json() : []; }).then(function(d) { renderEqs(Array.isArray(d) ? d : (d.results || [])); }).catch(function() { renderEqs([]); }); }
+        function renderEqs(list) { document.getElementById('eqCount').textContent = list.length; var tb = document.getElementById('eqTable'); document.getElementById('eqEmpty').style.display = list.length ? 'none' : 'block'; tb.innerHTML = list.map(function(e) { return '<tr><td><strong>' + esc(e.name) + '</strong></td><td><code>' + esc(e.code || '-') + '</code></td><td>' + esc(e.model || '-') + '</td><td>' + eqBadge(e.status) + '</td><td>' + (e.buy_date || '-') + '</td><td>' + (e.maintenance_due_date || '-') + '</td><td><button class="btn btn-outline-primary btn-sm me-1" onclick="editEq(' + e.id + ')"><i class="bi bi-pencil"></i></button><button class="btn btn-outline-danger btn-sm" onclick="delEq(' + e.id + ')"><i class="bi bi-trash"></i></button></td></tr>'; }).join(''); }
+        var eqModal;
+        function openEqModal() { ['eqId','eqName','eqCode','eqModel','eqBuyDate','eqMaintDate','eqRemark'].forEach(function(id) { document.getElementById(id).value = ''; }); document.getElementById('eqStatus').value = 'normal'; document.getElementById('eqModalTitle').textContent = '新增设备'; eqModal = new bootstrap.Modal(document.getElementById('eqModal')); eqModal.show(); }
+        function editEq(id) { fetch(API + '/inventory/equipment/' + id + '/', { headers: authHeaders() }).then(function(r) { return r.json(); }).then(function(e) { document.getElementById('eqId').value = e.id; ['eqName','eqCode','eqModel','eqBuyDate','eqMaintDate','eqRemark'].forEach(function(x) { document.getElementById(x).value = e[x.replace('eq','').toLowerCase()] || ''; }); document.getElementById('eqStatus').value = e.status || 'normal'; document.getElementById('eqModalTitle').textContent = '编辑设备'; eqModal = new bootstrap.Modal(document.getElementById('eqModal')); eqModal.show(); }).catch(function() {}); }
+        function saveEq() { var id = document.getElementById('eqId').value; var d = { name: document.getElementById('eqName').value, code: document.getElementById('eqCode').value, model: document.getElementById('eqModel').value, status: document.getElementById('eqStatus').value, buy_date: document.getElementById('eqBuyDate').value, maintenance_due_date: document.getElementById('eqMaintDate').value, remark: document.getElementById('eqRemark').value }; if (!d.name) { alert('请输入设备名称'); return; } var btn = document.getElementById('eqSaveBtn'); btn.disabled = true; btn.textContent = '保存中...'; fetch((id ? API + '/inventory/equipment/' + id + '/' : API + '/inventory/equipment/'), { method: id ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(d) }).then(function(r) { if (r.ok) { eqModal.hide(); loadEqs(); } else { alert('保存失败'); btn.disabled = false; btn.textContent = '保存'; } }).catch(function() { alert('保存失败'); btn.disabled = false; btn.textContent = '保存'; }); }
+        function delEq(id) { if (confirm('确定要删除这条设备记录吗？')) fetch(API + '/inventory/equipment/' + id + '/', { method: 'DELETE', headers: authHeaders() }).then(function(r) { if (r.ok || r.status === 204) loadEqs(); else alert('删除失败'); }).catch(function() { alert('删除失败'); }); }
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkAuth()) return;
+            loadMats(); loadEqs();
+            var token = getToken();
+            if (token) { fetch(API + '/notifications/', { headers: { 'Authorization': 'Token ' + token } }).then(function(r) { return r.ok ? r.json() : { results: [] }; }).then(function(d) { var unread = (d.results || d || []).filter(function(n) { return !n.is_read; }).length; document.querySelectorAll('#notifBadgeDesktop').forEach(function(el) { el.textContent = unread; el.style.display = unread > 0 ? 'inline' : 'none'; }); }).catch(function() {}); }
+            document.querySelectorAll('button[onclick="logout()"]').forEach(function(btn) { btn.addEventListener('click', function() { logout(); }); });
+        });
+    </script>
+</body>
+</html>
