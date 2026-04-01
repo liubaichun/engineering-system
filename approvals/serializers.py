@@ -89,11 +89,14 @@ class ApprovalFlowCreateSerializer(serializers.ModelSerializer):
         flow_type = attrs.get('flow_type')
         project = attrs.get('project')
         expense = attrs.get('expense')
+        amount = attrs.get('amount')
 
         if flow_type == 'project' and not project:
             raise serializers.ValidationError({'project': '立项审批必须关联项目'})
         if flow_type == 'payment' and not expense:
             raise serializers.ValidationError({'expense': '付款审批必须关联支出记录'})
+        if amount is not None and amount <= 0:
+            raise serializers.ValidationError({'amount': '审批金额必须大于零'})
 
         return attrs
 
