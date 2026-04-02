@@ -9,6 +9,12 @@ from rest_framework.response import Response
 from knox.models import AuthToken
 from .models import User, ApprovalFlow, ApprovalRecord
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
+import sys
+sys.path.insert(0, '/var/www/engineering_system')
+try:
+    from notifications.feishu_notify import send_approval_notification
+except ImportError:
+    send_approval_notification = None
 
 
 class RegisterView(generics.CreateAPIView):
@@ -196,7 +202,7 @@ class PendingUserListView(APIView):
             'role': u.role,
             'email': u.email or '',
             
-            'applied_at': u.applied_at.isoformat() if u.applied_at else None
+            'applied_at': u.created_at.isoformat() if u.created_at else None
         } for u in users]
         return Response({'code': 0, 'data': data})
 
@@ -313,8 +319,9 @@ class ApprovalFlowCreateView(APIView):
         project_id = request.data.get('project_id')
 
         approver = self._find_first_approver(request.user, flow_type)
-        if not approver:
-            return Response({'code': 40002, 'message': '未找到审批人'}, status=400)
+        if approver is None:
+            # admin用户无需审批，记录并直接返回成功
+            return Response({'code': 0, 'message': '管理员操作已记录（无需审批）'}, status=200)
 
         flow = ApprovalFlow.objects.create(
             applicant=request.user,
@@ -335,11 +342,38 @@ class ApprovalFlowCreateView(APIView):
         })
 
     def _find_first_approver(self, user, flow_type):
+        """查找第一个审批人，admin用户不入审批流"""
+        # admin用户不入审批流
+        if user.role == 'admin':
+            return None
+        # 按flow_type路由（预留扩展）
+        if flow_type == 'expense':
+            return self._find_expense_approver(user)
+        if flow_type == 'leave':
+            return self._find_leave_approver(user)
+        return self._find_default_approver(user)
+
+    def _find_default_approver(self, user):
+        """默认审批路由，排除自审批"""
         if user.role == 'pm':
-            return User.objects.filter(role='admin', is_active=True).first()
+            return User.objects.filter(role='admin', is_active=True).exclude(id=user.id).first()
         if user.role == 'engineer':
-            return User.objects.filter(role='pm', is_active=True).first()
-        return User.objects.filter(role='admin', is_active=True).first()
+            return User.objects.filter(role='pm', is_active=True).exclude(id=user.id).first()
+        return User.objects.filter(role='admin', is_active=True).exclude(id=user.id).first()
+
+    def _find_expense_approver(self, user):
+        """费用报销审批路由：engineer→pm→admin"""
+        if user.role == 'engineer':
+            return User.objects.filter(role='pm', is_active=True).exclude(id=user.id).first()
+        if user.role == 'pm':
+            return User.objects.filter(role='admin', is_active=True).exclude(id=user.id).first()
+        return None
+
+    def _find_leave_approver(self, user):
+        """请假审批路由：engineer→pm"""
+        if user.role == 'engineer':
+            return User.objects.filter(role='pm', is_active=True).exclude(id=user.id).first()
+        return None
 
 
 class ApprovalFlowListView(APIView):
@@ -427,6 +461,16 @@ class ApprovalFlowApproveView(APIView):
         flow.status = 'approved'
         flow.save()
 
+        # 发送飞书通知给申请人
+        if send_approval_notification:
+            send_approval_notification(
+                flow.applicant_id,
+                request.user.username,
+                flow.flow_type,
+                'approved',
+                remark
+            )
+
         return Response({'code': 0, 'message': '审批已通过'})
 
 
@@ -454,6 +498,16 @@ class ApprovalFlowRejectView(APIView):
 
         flow.status = 'rejected'
         flow.save()
+
+        # 发送飞书通知给申请人
+        if send_approval_notification:
+            send_approval_notification(
+                flow.applicant_id,
+                request.user.username,
+                flow.flow_type,
+                'rejected',
+                remark
+            )
 
         return Response({'code': 0, 'message': '已拒绝'})
 
