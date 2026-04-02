@@ -234,6 +234,31 @@ function logout() {
     localStorage.removeItem('auth_token');
     window.location.href = '/login/';
 }
+function loadDynamicMenu() {
+    var token = localStorage.getItem('auth_token');
+    if (!token) return;
+    // 初始隐藏侧边栏，防止闪烁
+    document.querySelectorAll('.sidebar, .sidebar-nav').forEach(el => { el.style.display = 'none'; });
+    // 调用正确的Menu API
+    fetch('/api/v1/auth/menu/', {
+        headers: { 'Authorization': 'Token ' + token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.data) return;
+        var allowed = data.data.map(m => m.id);
+        document.querySelectorAll('[data-menu]').forEach(el => {
+            // 用closest('li')正确隐藏父元素li
+            var li = el.closest('li');
+            if (li) {
+                li.style.display = allowed.includes(el.getAttribute('data-menu')) ? '' : 'none';
+            }
+        });
+        // API返回后显示侧边栏
+        document.querySelectorAll('.sidebar, .sidebar-nav').forEach(el => { el.style.display = ''; });
+    }).catch(e => console.error(e));
+}
+document.addEventListener('DOMContentLoaded', loadDynamicMenu);
 function showToast(msg, type, duration) {
     type = type || 'info';
     duration = duration || 3000;
