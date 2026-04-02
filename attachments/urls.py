@@ -8,6 +8,8 @@ router.register(r'folders', views.ProjectFileFolderViewSet, basename='project-fo
 router.register(r'project-attachments', views.ProjectAttachmentViewSet, basename='project-attachment')
 router.register(r'task-attachments', views.TaskAttachmentViewSet, basename='task-attachment')
 router.register(r'batch-download', views.BatchDownloadViewSet, basename='batch-download')
+router.register(r'file-ops', views.AttachmentRenameViewSet, basename='file-ops')
+router.register(r'storage-stats', views.StorageStatsViewSet, basename='storage-stats')
 router.register(r'', views.AttachmentViewSet, basename='attachment')
 
 urlpatterns = [

@@ -3,7 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.conf import settings
-from django.db.models import Q
+from django.db import models
+from django.db.models import Q, Sum
 from django.utils import timezone
 from django.http import FileResponse, HttpResponse
 from django.http.response import HttpResponseBase
@@ -204,6 +205,158 @@ class ProjectFileFolderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+
+class AttachmentRenameViewSet(viewsets.ViewSet):
+    """文件重命名/移动"""
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['post'])
+    def rename(self, request):
+        """单文件重命名: {id, name}"""
+        att_id = request.data.get('id')
+        new_name = request.data.get('name', '').strip()
+        if not att_id or not new_name:
+            return Response({'detail': 'id和name必填'}, status=400)
+        try:
+            att = Attachment.objects.get(id=att_id)
+        except Attachment.DoesNotExist:
+            return Response({'detail': '文件不存在'}, status=404)
+        ext = os.path.splitext(att.name)[1]
+        if not new_name.endswith(ext):
+            new_name += ext
+        att.name = new_name
+        att.save(update_fields=['name'])
+        return Response({'id': att.id, 'name': att.name})
+
+    @action(detail=False, methods=['post'])
+    def batch_rename(self, request):
+        """批量重命名: [{id, name}, ...]"""
+        items = request.data.get('items', [])
+        if not items or not isinstance(items, list):
+            return Response({'detail': 'items列表必填'}, status=400)
+        if len(items) > 50:
+            return Response({'detail': '最多单次50个文件'}, status=400)
+        results = []
+        for item in items:
+            att_id = item.get('id')
+            new_name = item.get('name', '').strip()
+            if not att_id or not new_name:
+                continue
+            try:
+                att = Attachment.objects.get(id=att_id)
+                ext = os.path.splitext(att.name)[1]
+                if not new_name.endswith(ext):
+                    new_name += ext
+                att.name = new_name
+                att.save(update_fields=['name'])
+                results.append({'id': att.id, 'name': att.name})
+            except Attachment.DoesNotExist:
+                continue
+        return Response({'updated': results})
+
+    @action(detail=False, methods=['post'])
+    def move(self, request):
+        """移动文件到文件夹: {attachment_ids: [], folder_id: int|null}"""
+        att_ids = request.data.get('attachment_ids', [])
+        folder_id = request.data.get('folder_id')
+        if not att_ids:
+            return Response({'detail': 'attachment_ids必填'}, status=400)
+        if len(att_ids) > 50:
+            return Response({'detail': '最多单次50个文件'}, status=400)
+
+        if folder_id:
+            try:
+                folder = ProjectFileFolder.objects.get(id=folder_id)
+            except ProjectFileFolder.DoesNotExist:
+                return Response({'detail': '目标文件夹不存在'}, status=404)
+            # 将文件关联到项目+文件夹
+            from .models import ProjectAttachment
+            updated = 0
+            for att_id in att_ids:
+                try:
+                    att = Attachment.objects.get(id=att_id)
+                    pa, _ = ProjectAttachment.objects.get_or_create(
+                        project=folder.project, attachment=att
+                    )
+                    # 更新attachment的category
+                    att.category = folder.category
+                    att.save(update_fields=['category'])
+                    updated += 1
+                except Attachment.DoesNotExist:
+                    continue
+            return Response({'moved': updated, 'folder': folder.name})
+        else:
+            # 从项目中移除
+            from .models import ProjectAttachment
+            removed = ProjectAttachment.objects.filter(attachment_id__in=att_ids).delete()[0]
+            return Response({'removed_from_project': removed})
+
+
+class StorageStatsViewSet(viewsets.ViewSet):
+    """存储空间统计"""
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def by_project(self, request):
+        """按项目统计存储空间"""
+        from projects.models import Project
+        stats = []
+        for project in Project.objects.all():
+            pa_qs = ProjectAttachment.objects.filter(project=project)
+            total_size = sum(
+                a.file_size or 0 for a in Attachment.objects.filter(
+                    project_attachments__project=project
+                ).select_related('project_attachments')
+            )
+            # 更高效的方式
+            att_ids = list(pa_qs.values_list('attachment_id', flat=True))
+            if att_ids:
+                total_size = Attachment.objects.filter(id__in=att_ids).aggregate(
+                    total=models.Sum('file_size')
+                )['total'] or 0
+            else:
+                total_size = 0
+            stats.append({
+                'project_id': project.id,
+                'project_name': project.name,
+                'file_count': pa_qs.count(),
+                'total_size': total_size,
+                'total_size_mb': round(total_size / 1024 / 1024, 2),
+            })
+        # 按size排序
+        stats.sort(key=lambda x: x['total_size'], reverse=True)
+        return Response(stats)
+
+    @action(detail=False, methods=['get'])
+    def by_category(self, request):
+        """按分类统计"""
+        stats = []
+        for cat in AttachmentCategory.objects.all():
+            total_size = Attachment.objects.filter(category=cat).aggregate(
+                total=models.Sum('file_size')
+            )['total'] or 0
+            stats.append({
+                'category_id': cat.id,
+                'category_name': cat.name,
+                'file_count': Attachment.objects.filter(category=cat).count(),
+                'total_size': total_size,
+                'total_size_mb': round(total_size / 1024 / 1024, 2),
+            })
+        stats.sort(key=lambda x: x['total_size'], reverse=True)
+        return Response(stats)
+
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        """全局存储汇总"""
+        total_size = Attachment.objects.aggregate(total=models.Sum('file_size'))['total'] or 0
+        total_count = Attachment.objects.count()
+        return Response({
+            'total_files': total_count,
+            'total_size': total_size,
+            'total_size_mb': round(total_size / 1024 / 1024, 2),
+            'total_size_gb': round(total_size / 1024 / 1024 / 1024, 2),
+        })
 
 
 class BatchDownloadViewSet(viewsets.ViewSet):
