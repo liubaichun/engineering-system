@@ -38,19 +38,30 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         # 缓存 key: projects_project_{user_id}_{status}_{search}
         cache_key = f"projects_project_{user.id}_{status_filter or ''}_{search or ''}"
-        cached_qs = cache.get(cache_key)
-        if cached_qs is not None:
-            return cached_qs
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            # 返回序列化数据的标记，由 list response 处理
+            # 这里返回queryset，但将data存入request以供list renderer使用
+            self._cached_response_data = cached_data
+            return self._get_base_queryset().filter(
+                models.Q(manager=user) | models.Q(manager__isnull=True)
+            ) if user.role != 'admin' else self._get_base_queryset()
 
         queryset = self._get_base_queryset()
         if status_filter:
             queryset = queryset.filter(status=status_filter)
 
-        # 序列化后再缓存（queryset 不能直接缓存）
+        # 序列化后缓存data（不缓存queryset）
         from .serializers import ProjectSerializer
         data = ProjectSerializer(queryset, many=True).data
-        cache.set(cache_key, queryset, 60 * 5)  # 5分钟
+        cache.set(cache_key, data, 60 * 5)  # 5分钟
         return queryset
+
+    def list(self, request, *args, **kwargs):
+        # 如果有缓存的序列化数据，直接返回
+        if hasattr(self, '_cached_response_data'):
+            return Response(self._cached_response_data)
+        return super().list(request, *args, **kwargs)
 
     def _get_base_queryset(self):
         user = self.request.user

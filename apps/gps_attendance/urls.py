@@ -17,7 +17,9 @@ from .views import (
     WorkerLookupView,
     WorkerListView,
     WorkerCreateView,
-    WorkerLocationView
+    WorkerLocationView,
+    WorkerDeleteView,
+    AttendanceRecordDeleteView
 )
 
 app_name = 'gps_attendance'
@@ -46,4 +48,8 @@ urlpatterns = [
     path('workers/', WorkerListView.as_view(), name='workers-list'),
     path('workers/create/', WorkerCreateView.as_view(), name='worker-create'),
     path('workers/locations/', WorkerLocationView.as_view(), name='worker-locations'),
+    path('workers/<int:worker_id>/', WorkerDeleteView.as_view(), name='worker-delete'),
+    
+    # 考勤记录删除
+    path('records/<int:record_id>/', AttendanceRecordDeleteView.as_view(), name='record-delete'),
 ]

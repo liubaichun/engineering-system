@@ -588,34 +588,43 @@ class AttendanceRecordListView(APIView):
 class WorkerLookupView(APIView):
     """
     GET /api/v1/attendance/workers/lookup/?phone=xxx or /id_card=xxx
-    
+
     根据手机号或身份证号查询施工人员
+    允许匿名访问，但必须提供有效认证Token才能返回完整信息
     """
-    permission_classes = [IsAuthenticated]  # 需要登录才能查询，保护个人信息
-    
+    permission_classes = [AllowAny]  # 改为AllowAny，内部手动认证
+
     def get(self, request):
+        # 手动Token认证检查
+        auth = request.auth
+        if not auth or not request.user.is_authenticated:
+            return Response({
+                'code': 40101,
+                'message': '未授权访问，请先登录'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
         phone = request.GET.get('phone')
         id_card = request.GET.get('id_card')
-        
+
         if not phone and not id_card:
             return Response({
                 'code': 40001,
                 'message': '请提供手机号或身份证号'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
-        workers = Worker.objects.filter(is_deleted=False)
+
+        workers = Worker.objects.filter(is_deleted=False).select_related('group')
         if phone:
             workers = workers.filter(phone=phone)
         if id_card:
             workers = workers.filter(id_card_number=id_card)
-        
+
         workers = workers[:1]
         if not workers:
             return Response({
                 'code': 40401,
                 'message': '未找到该施工人员'
             }, status=status.HTTP_404_NOT_FOUND)
-        
+
         w = workers[0]
         return Response({
             'code': 0,
@@ -844,4 +853,58 @@ class WorkerLocationView(APIView):
                 'workers': results,
                 'projects': projects
             }
+        })
+
+
+class WorkerDeleteView(APIView):
+    """
+    DELETE /api/v1/attendance/workers/<id>/
+    
+    软删除施工人员
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def delete(self, request, worker_id):
+        try:
+            worker = Worker.objects.get(id=worker_id, is_deleted=False)
+        except Worker.DoesNotExist:
+            return Response({
+                'code': 40401,
+                'message': '施工人员不存在'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # 软删除
+        worker.is_deleted = True
+        worker.save(update_fields=['is_deleted'])
+        
+        return Response({
+            'code': 0,
+            'message': '删除成功'
+        })
+
+
+class AttendanceRecordDeleteView(APIView):
+    """
+    DELETE /api/v1/attendance/records/<id>/
+    
+    软删除考勤记录
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def delete(self, request, record_id):
+        try:
+            record = AttendanceRecord.objects.get(id=record_id, is_deleted=False)
+        except AttendanceRecord.DoesNotExist:
+            return Response({
+                'code': 40401,
+                'message': '考勤记录不存在'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # 软删除
+        record.is_deleted = True
+        record.save(update_fields=['is_deleted'])
+        
+        return Response({
+            'code': 0,
+            'message': '删除成功'
         })

@@ -512,10 +512,11 @@
                     <div class="table-responsive">
                         <table class="table info-table">
                         <tbody>
-                            <tr><td>系统版本</td><td>v1.0.0</td></tr>
-                            <tr><td>数据库</td><td>SQLite 3.x</td></tr>
-                            <tr><td>Python</td><td>3.12.x</td></tr>
-                            <tr><td>Django</td><td>4.x</td></tr>
+                            <tr><td>系统版本</td><td id="sysVersion">v1.0.0</td></tr>
+                            <tr><td>数据库</td><td id="sysDb">SQLite 3.x</td></tr>
+                            <tr><td>Python</td><td id="sysPython">3.12.x</td></tr>
+                            <tr><td>Django</td><td id="sysDjango">4.x</td></tr>
+                            <tr><td>运行环境</td><td id="sysHost">加载中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -595,6 +596,18 @@ function showToast(message, type) {
 
 function getCsrfToken() { var match = document.cookie.match(/csrftoken=([^;]+)/); return match ? match[1] : ''; }
 
+function loadNotificationPrefs() {
+    var prefs = localStorage.getItem('notificationPrefs');
+    if (prefs) {
+        try {
+            var p = JSON.parse(prefs);
+            document.getElementById('notifyEmail').checked = p.email !== false;
+            document.getElementById('notifySMS').checked = p.sms !== false;
+            document.getElementById('notifyPush').checked = p.push !== false;
+        } catch(e) {}
+    }
+}
+
 function loadProfile() {
     var token = localStorage.getItem('auth_token');
     if (!token) return;
@@ -604,7 +617,7 @@ function loadProfile() {
             if (!data) return;
             document.getElementById('username').value = data.username || '';
             document.getElementById('email').value = data.email || '';
-            document.getElementById('phone').value = '';
+            document.getElementById('phone').value = data.phone || '';
         }).catch(function(err) { console.error('加载个人信息失败', err); });
 }
 
@@ -612,7 +625,8 @@ function saveProfile() {
     var token = localStorage.getItem('auth_token');
     if (!token) return;
     var email = document.getElementById('email').value;
-    var payload = { email: email };
+    var phone = document.getElementById('phone').value;
+    var payload = { email: email, phone: phone };
     fetch('/api/v1/users/me/', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Token ' + token, 'X-CSRFToken': getCsrfToken() },
@@ -636,9 +650,24 @@ function changePassword() {
     document.getElementById('confirmPassword').value = '';
 }
 
-function saveNotification() { showToast('通知设置保存成功', 'success'); }
+function saveNotification() {
+    var notifyEmail = document.getElementById('notifyEmail').checked;
+    var notifySMS = document.getElementById('notifySMS').checked;
+    var notifyPush = document.getElementById('notifyPush').checked;
+    var prefs = { email: notifyEmail, sms: notifySMS, push: notifyPush };
+    localStorage.setItem('notificationPrefs', JSON.stringify(prefs));
+    showToast('通知设置已保存', 'success');
+}
 
-document.addEventListener('DOMContentLoaded', function() { checkAuth(); loadProfile(); loadOperationLogs(1); });
+function loadSystemInfo() {
+    document.getElementById('sysVersion').textContent = 'v2.0.0';
+    document.getElementById('sysDb').textContent = 'PostgreSQL 16';
+    document.getElementById('sysPython').textContent = '3.12';
+    document.getElementById('sysDjango').textContent = '4.2';
+    document.getElementById('sysHost').textContent = '腾讯云';
+}
+
+document.addEventListener('DOMContentLoaded', function() { checkAuth(); loadProfile(); loadNotificationPrefs(); loadSystemInfo(); loadOperationLogs(1); });
 
 // ===== Operation Logs =====
 var operationLogsCurrentPage = 1;

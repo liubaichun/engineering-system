@@ -25,14 +25,16 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        # N+1优化：预加载关联表
+        base_qs = Task.objects.select_related('project', 'manager')
         if user.role == 'admin':
-            queryset = Task.objects.all()
+            queryset = base_qs.all()
         else:
             # 非admin用户：看分配给自己的任务 OR 自己管理的项目下的任务 OR 未分配负责人的任务
-            queryset = Task.objects.filter(
+            queryset = base_qs.filter(
                 Q(manager=user) | Q(project__manager=user) | Q(manager__isnull=True)
             )
-        
+
         # 支持状态过滤
         status_filter = self.request.query_params.get('status', None)
         if status_filter:

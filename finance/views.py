@@ -11,7 +11,7 @@ from operation_logs.models import OperationLog
 
 class IncomeViewSet(viewsets.ModelViewSet):
     """收入视图集"""
-    queryset = Income.objects.all()
+    queryset = Income.objects.select_related('project', 'customer', 'operator').all()
     serializer_class = IncomeSerializer
     permission_classes = [IsAuthenticated, IsFinanceOnly]
 
@@ -68,7 +68,7 @@ class IncomeViewSet(viewsets.ModelViewSet):
 
 class ExpenseViewSet(viewsets.ModelViewSet):
     """支出视图集"""
-    queryset = Expense.objects.all()
+    queryset = Expense.objects.select_related('project', 'supplier', 'operator').all()
     serializer_class = ExpenseSerializer
     permission_classes = [IsAuthenticated, IsFinanceOnly]
 

@@ -442,9 +442,17 @@
                 <input type="hidden" id="financeId">
                 <div class="mb-3">
                     <label class="form-label">类型</label>
-                    <select class="form-select" id="financeType" required>
+                    <select class="form-select" id="financeType" required onchange="toggleExpenseType()">
                         <option value="income">收入</option>
                         <option value="expense">支出</option>
+                    </select>
+                </div>
+                <div class="mb-3" id="expenseTypeDiv" style="display:none;">
+                    <label class="form-label">支出类型</label>
+                    <select class="form-select" id="expenseType">
+                        <option value="expense">费用报销</option>
+                        <option value="advance">预付款</option>
+                        <option value="deposit">押金</option>
                     </select>
                 </div>
                 <div class="mb-3">
@@ -647,11 +655,17 @@ function editFinance(id) {
     if (!record) { showToast('记录不存在', 'error'); return; }
     document.getElementById('financeId').value = id;
     document.getElementById('financeModalTitle').textContent = '编辑收支记录';
-    document.getElementById('financeType').value = record._type;
+    var recType = record._type === 'income' ? 'income' : 'expense';
+    document.getElementById('financeType').value = recType;
+    toggleExpenseType();
     document.getElementById('financeAmount').value = record.amount || '';
     document.getElementById('financeCategory').value = record.category || record.type || '';
     document.getElementById('financeRemark').value = record.remark || record.description || '';
     document.getElementById('financeDate').value = record.date ? record.date.substring(0, 10) : '';
+    // Set expense_type if present
+    if (record.expense_type) {
+        document.getElementById('expenseType').value = record.expense_type;
+    }
     // Try to set project
     var projectSelect = document.getElementById('financeProject');
     for (var i = 0; i < projectSelect.options.length; i++) {
@@ -662,6 +676,14 @@ function editFinance(id) {
     }
     var modal = new bootstrap.Modal(document.getElementById('financeModal'));
     modal.show();
+}
+
+function toggleExpenseType() {
+    var type = document.getElementById('financeType').value;
+    var div = document.getElementById('expenseTypeDiv');
+    if (div) {
+        div.style.display = type === 'expense' ? 'block' : 'none';
+    }
 }
 
 function saveFinance() {
@@ -682,6 +704,10 @@ function saveFinance() {
         date: date,
         remark: remark
     };
+    // 仅支出时传递 expense_type
+    if (type === 'expense') {
+        payload.expense_type = document.getElementById('expenseType').value;
+    }
     if (projectId) payload.project = parseInt(projectId);
 
     var apiUrl = type === 'income' ? '/api/v1/finance/income/' : '/api/v1/finance/expense/';

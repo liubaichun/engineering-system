@@ -55,10 +55,7 @@ class MeView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]  # 已修复：需要登录才能查看
     
     def get_object(self):
-        # 从请求中获取用户（Token认证或Session认证）
-        if self.request.user and self.request.user.is_authenticated:
-            return self.request.user
-        # 尝试从Token获取用户
+        # 优先从Token获取用户（Token认证优先）
         auth_header = self.request.META.get('HTTP_AUTHORIZATION', '')
         if auth_header.startswith('Token '):
             token_key = auth_header[6:]
@@ -67,6 +64,9 @@ class MeView(generics.RetrieveUpdateAPIView):
                 return token.user
             except AuthToken.DoesNotExist:
                 pass
+        # 降级：从request.user获取（Session认证）
+        if self.request.user and self.request.user.is_authenticated:
+            return self.request.user
         return None
     
     def retrieve(self, request, *args, **kwargs):

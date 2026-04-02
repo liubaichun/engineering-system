@@ -16,6 +16,7 @@ class User(AbstractUser):
     ]
     
     email = models.EmailField(verbose_name='邮箱', blank=True, null=True, unique=True)
+    phone = models.CharField(verbose_name='联系电话', max_length=20, blank=True, default='')
     role = models.CharField(verbose_name='角色', max_length=20, choices=ROLE_CHOICES, default='dev')
     is_active = models.BooleanField(verbose_name='是否启用', default=True)
     created_at = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)

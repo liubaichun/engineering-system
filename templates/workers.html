@@ -345,8 +345,21 @@
 
         async function deleteWorker(id) {
             if (!confirm('确定删除？')) return;
-            showToast('删除成功');
-            loadWorkers();
+            try {
+                const resp = await fetch('/api/v1/attendance/workers/' + id + '/', {
+                    method: 'DELETE',
+                    headers: authHeaders()
+                });
+                if (resp.ok) {
+                    showToast('删除成功');
+                    loadWorkers();
+                } else {
+                    const data = await resp.json();
+                    showToast(data.message || '删除失败', 'error');
+                }
+            } catch (e) {
+                showToast('网络错误', 'error');
+            }
         }
 
         async function loadAttendance() {
@@ -372,9 +385,28 @@
 
         function renderAttendance() {
             const tbody = document.getElementById('attendanceTable');
-            if (!allRecords.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">暂无记录</td></tr>'; return; }
+            if (!allRecords.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">暂无记录</td></tr>'; return; }
             const sm = {'normal':['正常','success'],'late':['迟到','warning'],'early_leave':['早退','warning'],'absent':['缺勤','danger']};
-            tbody.innerHTML = allRecords.map(r => { const [t,c]=sm[r.status]||['正常','success']; return `<tr><td>${r.worker_name}</td><td>${r.project_name}</td><td>${r.group_name||'-'}</td><td>${r.check_in_time?r.check_in_time.slice(0,16):'-'}</td><td>${r.check_out_time?r.check_out_time.slice(0,16):'-'}</td><td>${r.working_hours?r.working_hours+'h':'-'}</td><td><span class="badge bg-${c}">${t}</span></td></tr>`; }).join('');
+            tbody.innerHTML = allRecords.map(r => { const [t,c]=sm[r.status]||['正常','success']; return `<tr><td>${r.worker_name}</td><td>${r.project_name}</td><td>${r.group_name||'-'}</td><td>${r.check_in_time?r.check_in_time.slice(0,16):'-'}</td><td>${r.check_out_time?r.check_out_time.slice(0,16):'-'}</td><td>${r.working_hours?r.working_hours+'h':'-'}</td><td><span class="badge bg-${c}">${t}</span></td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteRecord(${r.record_id})"><i class="bi bi-trash"></i></button></td></tr>`; }).join('');
+        }
+
+        async function deleteRecord(id) {
+            if (!confirm('确定删除该考勤记录？')) return;
+            try {
+                const resp = await fetch('/api/v1/attendance/records/' + id + '/', {
+                    method: 'DELETE',
+                    headers: authHeaders()
+                });
+                if (resp.ok) {
+                    showToast('删除成功');
+                    loadAttendance();
+                } else {
+                    const data = await resp.json();
+                    showToast(data.message || '删除失败', 'error');
+                }
+            } catch (e) {
+                showToast('网络错误', 'error');
+            }
         }
 
         async function loadQRCodes() {
