@@ -31,7 +31,7 @@ class RegisterView(generics.CreateAPIView):
         user = serializer.save()
         
         # 创建 Knox Token（返回元组：instance, token_string）
-        _, token_string = AuthToken.objects.create(user=user)
+        _, token_string = AuthToken.objects.create(user)
         
         return Response({
             'user': UserSerializer(user).data,
@@ -49,7 +49,7 @@ class LoginView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         
         user = serializer.validated_data['user']
-        instance, token_string = AuthToken.objects.create(user=user)
+        instance, token_string = AuthToken.objects.create(user)
         
         return Response({
             'expiry': instance.expiry,
@@ -140,7 +140,7 @@ class ChangePasswordView(generics.GenericAPIView):
         
         # 更新 Knox Token
         AuthToken.objects.filter(user=user).delete()
-        _, token_string = AuthToken.objects.create(user=user)
+        _, token_string = AuthToken.objects.create(user)
         
         return Response({
             'detail': '密码修改成功',
@@ -220,15 +220,16 @@ class PendingUserActivateView(APIView):
         except UsersPendingApproval.DoesNotExist:
             return Response({'code': 40401, 'message': '申请不存在'}, status=status.HTTP_404_NOT_FOUND)
         
-        # 创建正式用户
-        user = User.objects.create_user(
+        # 创建正式用户（密码已是哈希值，用create_user会重复加密，故手动创建）
+        user = User(
             username=pu.username,
-            password=pu.password,
             email=pu.email,
             phone=pu.phone or '',
             role=pu.role,
             is_active=True
         )
+        user.password = pu.password  # 直接赋值已哈希的密码，不重复加密
+        user.save()
         
         # 更新待审核记录
         pu.status = 'approved'
@@ -535,3 +536,91 @@ class ManagerPendingListView(APIView):
 
         return Response({'code': 0, 'data': data})
 
+
+
+# ============================================
+# Phase 3: Dynamic Menu API
+# ============================================
+
+ROLE_MENU = {
+    'admin': [
+        {'id': 'dashboard', 'icon': 'bi-speedometer2', 'label': '控制台', 'url': '/dashboard/'},
+        {'id': 'projects', 'icon': 'bi-folder', 'label': '项目管理', 'url': '/projects/'},
+        {'id': 'tasks', 'icon': 'bi-list-task', 'label': '任务管理', 'url': '/tasks/'},
+        {'id': 'workers', 'icon': 'bi-people', 'label': '施工人员', 'url': '/workers/'},
+        {'id': 'customers', 'icon': 'bi-briefcase', 'label': '客户管理', 'url': '/customers/'},
+        {'id': 'contracts', 'icon': 'bi-file-earmark-text', 'label': '合同管理', 'url': '/contracts/'},
+        {'id': 'quotes', 'icon': 'bi-currency-dollar', 'label': '报价管理', 'url': '/quotes/'},
+        {'id': 'finance', 'icon': 'bi-wallet2', 'label': '财务管理', 'url': '/finance/'},
+        {'id': 'attendance', 'icon': 'bi-clock', 'label': '考勤管理', 'url': '/attendance/'},
+        {'id': 'approval', 'icon': 'bi-check-circle', 'label': '审批管理', 'url': '/approval/'},
+        {'id': 'stats', 'icon': 'bi-bar-chart', 'label': '统计报表', 'url': '/stats/'},
+        {'id': 'system', 'icon': 'bi-gear', 'label': '系统设置', 'url': '/system/'},
+    ],
+    'pm': [
+        {'id': 'dashboard', 'icon': 'bi-speedometer2', 'label': '项目概览', 'url': '/dashboard/'},
+        {'id': 'projects', 'icon': 'bi-folder', 'label': '项目概览', 'url': '/projects/'},
+        {'id': 'tasks', 'icon': 'bi-list-task', 'label': '进度管理', 'url': '/tasks/'},
+        {'id': 'workers', 'icon': 'bi-people', 'label': '人员调度', 'url': '/workers/'},
+        {'id': 'attendance_mgr', 'icon': 'bi-calendar-check', 'label': '考勤审批', 'url': '/attendance/manager/'},
+        {'id': 'quality', 'icon': 'bi-shield-check', 'label': '质量检查', 'url': '/quality/'},
+        {'id': 'finance_pm', 'icon': 'bi-wallet2', 'label': '成本分析', 'url': '/finance/'},
+        {'id': 'approval', 'icon': 'bi-check-circle', 'label': '发起申请', 'url': '/approval/'},
+        {'id': 'approval_pending', 'icon': 'bi-clipboard-check', 'label': '待我审批', 'url': '/approval/manager_pending/'},
+    ],
+    'finance': [
+        {'id': 'dashboard', 'icon': 'bi-speedometer2', 'label': '控制台', 'url': '/dashboard/'},
+        {'id': 'contracts', 'icon': 'bi-file-earmark-text', 'label': '合同管理', 'url': '/contracts/'},
+        {'id': 'finance_income', 'icon': 'bi-arrow-down-circle', 'label': '收款记录', 'url': '/finance/income/'},
+        {'id': 'finance_expense', 'icon': 'bi-arrow-up-circle', 'label': '付款记录', 'url': '/finance/expense/'},
+        {'id': 'wages', 'icon': 'bi-cash-stack', 'label': '工资核算', 'url': '/finance/wages/'},
+        {'id': 'stats_finance', 'icon': 'bi-bar-chart', 'label': '财务报表', 'url': '/stats/finance/'},
+        {'id': 'finance_all', 'icon': 'bi-folder', 'label': '项目成本', 'url': '/finance/'},
+        {'id': 'approval', 'icon': 'bi-check-circle', 'label': '审批管理', 'url': '/approval/'},
+    ],
+    'engineer': [
+        {'id': 'dashboard', 'icon': 'bi-speedometer2', 'label': '控制台', 'url': '/dashboard/'},
+        {'id': 'profile', 'icon': 'bi-person', 'label': '个人信息', 'url': '/profile/'},
+        {'id': 'attendance_checkin', 'icon': 'bi-clock', 'label': '考勤打卡', 'url': '/attendance/checkin/'},
+        {'id': 'tasks_my', 'icon': 'bi-list-task', 'label': '施工任务', 'url': '/tasks/my_tasks/'},
+        {'id': 'safety', 'icon': 'bi-shield', 'label': '安全记录', 'url': '/safety/'},
+        {'id': 'wages_my', 'icon': 'bi-cash', 'label': '工资查询', 'url': '/finance/wages/my/'},
+        {'id': 'approval_my', 'icon': 'bi-clipboard', 'label': '我的申请', 'url': '/approval/my/'},
+    ],
+    'business': [
+        {'id': 'dashboard', 'icon': 'bi-speedometer2', 'label': '控制台', 'url': '/dashboard/'},
+        {'id': 'customers', 'icon': 'bi-briefcase', 'label': '客户管理', 'url': '/customers/'},
+        {'id': 'opportunities', 'icon': 'bi-star', 'label': '商机跟踪', 'url': '/opportunities/'},
+        {'id': 'contracts_new', 'icon': 'bi-file-earmark-plus', 'label': '合同发起', 'url': '/contracts/new/'},
+        {'id': 'quotes', 'icon': 'bi-currency-dollar', 'label': '报价管理', 'url': '/quotes/'},
+        {'id': 'finance_collection', 'icon': 'bi-arrow-up-circle', 'label': '收款跟进', 'url': '/finance/collection/'},
+        {'id': 'projects_cust', 'icon': 'bi-folder', 'label': '客户项目', 'url': '/projects/?filter=my_customers'},
+    ],
+}
+
+
+class MenuView(APIView):
+    """获取当前用户对应的菜单"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        role = request.user.role if request.user else 'admin'
+        menu = ROLE_MENU.get(role, ROLE_MENU.get('admin', []))
+        return Response({'code': 0, 'data': menu})
+
+
+# ============================================
+# Phase 4: API Permission Decorator
+# ============================================
+
+from functools import wraps
+
+def role_required(*allowed_roles):
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(self, request, *args, **kwargs):
+            if request.user.role in allowed_roles or request.user.role == 'admin':
+                return view_func(self, request, *args, **kwargs)
+            return Response({'code': 40301, 'message': '您没有权限访问此功能'}, status=403)
+        return wrapper
+    return decorator
