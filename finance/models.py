@@ -48,8 +48,18 @@ class Income(models.Model):
 
 class Expense(models.Model):
     """支出模型"""
-    
+
+    EXPENSE_TYPE_CHOICES = [
+        ('expense', '费用报销'),
+        ('advance', '预付款'),
+        ('deposit', '押金'),
+    ]
+
     amount = models.DecimalField(verbose_name='金额', max_digits=14, decimal_places=2)
+    expense_type = models.CharField(
+        verbose_name='支出类型', max_length=20,
+        choices=EXPENSE_TYPE_CHOICES, default='expense'
+    )
     date = models.DateField(verbose_name='日期')
     project = models.ForeignKey(
         'projects.Project',

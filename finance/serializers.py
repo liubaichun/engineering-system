@@ -85,7 +85,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Expense
         fields = [
-            'id', 'amount', 'date', 'project', 'project_name',
+            'id', 'amount', 'expense_type', 'date', 'project', 'project_name',
             'supplier', 'supplier_name', 'description', 'attachment', 'remark', 'operator', 'operator_name',
             'created_at', 'updated_at'
         ]
@@ -94,7 +94,9 @@ class ExpenseSerializer(serializers.ModelSerializer):
     def validate_amount(self, value):
         if value < 0:
             raise serializers.ValidationError('金额不能为负数')
-        if value == 0:
+        # 仅费用报销禁止零金额，预付款/押金允许
+        expense_type = self.initial_data.get('expense_type', 'expense')
+        if expense_type == 'expense' and value == 0:
             raise serializers.ValidationError('金额不能为零')
         return value
 
