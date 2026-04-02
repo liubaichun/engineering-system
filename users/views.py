@@ -299,31 +299,31 @@ class RegisterApprovalView(APIView):
 
 
 
-# Phase 3: Generic Approval Framework
+
+# Phase 3: Approval Framework (Fixed for existing model)
 
 class ApprovalFlowCreateView(APIView):
     """创建审批流"""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        flow_type = request.data.get('flow_type')
+        flow_type = request.data.get('flow_type', 'leave')
+        target_object_type = request.data.get('target_object_type', '')
+        target_object_id = request.data.get('target_object_id')
         project_id = request.data.get('project_id')
-        content = request.data.get('content', {})
 
-        if not flow_type:
-            return Response({'code': 40001, 'message': 'flow_type必填'}, status=400)
-
-        approver = self._find_first_approver(request.user, project_id, flow_type)
+        approver = self._find_first_approver(request.user, flow_type)
         if not approver:
             return Response({'code': 40002, 'message': '未找到审批人'}, status=400)
 
         flow = ApprovalFlow.objects.create(
-            flow_type=flow_type,
             applicant=request.user,
-            applicant_role=request.user.role,
+            flow_type=flow_type,
+            target_object_type=target_object_type,
+            target_object_id=target_object_id,
             project_id=project_id,
-            content=content,
-            current_approver=approver,
+            applicant_role=request.user.role,
+            current_approver_id=approver.id,
             status='pending'
         )
 
@@ -334,15 +334,10 @@ class ApprovalFlowCreateView(APIView):
             'current_approver': approver.username
         })
 
-    def _find_first_approver(self, user, project_id, flow_type):
+    def _find_first_approver(self, user, flow_type):
         if user.role == 'pm':
             return User.objects.filter(role='admin', is_active=True).first()
         if user.role == 'engineer':
-            if project_id:
-                from projects.models import Project
-                project = Project.objects.filter(id=project_id).first()
-                if project and project.manager:
-                    return project.manager
             return User.objects.filter(role='pm', is_active=True).first()
         return User.objects.filter(role='admin', is_active=True).first()
 
@@ -356,21 +351,21 @@ class ApprovalFlowListView(APIView):
         filter_type = request.query_params.get('filter', 'all')
 
         if filter_type == 'my_pending':
-            flows = ApprovalFlow.objects.filter(current_approver=user, status='pending')
+            flows = ApprovalFlow.objects.filter(current_approver_id=user.id, status='pending')
         elif filter_type == 'my_applied':
             flows = ApprovalFlow.objects.filter(applicant=user)
         else:
-            flows = ApprovalFlow.objects.filter(applicant=user) | ApprovalFlow.objects.filter(current_approver=user)
+            flows = ApprovalFlow.objects.filter(applicant=user) | ApprovalFlow.objects.filter(current_approver_id=user.id)
 
         flows = flows.distinct().order_by('-created_at')[:50]
         data = [{
             'id': f.id,
             'flow_type': f.flow_type,
             'applicant': f.applicant.username,
-            'applicant_role': f.applicant_role,
+            'applicant_role': f.applicant_role or '',
             'project_id': f.project_id,
             'status': f.status,
-            'current_approver': f.current_approver.username if f.current_approver else None,
+            'current_approver': f.current_approver.username if f.current_approver_id else None,
             'created_at': f.created_at.isoformat() if f.created_at else None
         } for f in flows]
 
@@ -387,21 +382,20 @@ class ApprovalFlowDetailView(APIView):
         except ApprovalFlow.DoesNotExist:
             return Response({'code': 40401, 'message': '审批流不存在'}, status=404)
 
-        records = ApprovalRecord.objects.filter(flow=flow).order_by('created_at')
+        records = ApprovalRecord.objects.filter(flow_id=flow_id).order_by('created_at')
         data = {
             'id': flow.id,
             'flow_type': flow.flow_type,
             'applicant': flow.applicant.username,
-            'applicant_role': flow.applicant_role,
+            'applicant_role': flow.applicant_role or '',
             'project_id': flow.project_id,
-            'content': flow.content,
             'status': flow.status,
-            'current_approver': flow.current_approver.username if flow.current_approver else None,
+            'current_approver': flow.current_approver.username if flow.current_approver_id else None,
             'created_at': flow.created_at.isoformat() if flow.created_at else None,
             'records': [{
-                'approver': r.approver.username if r.approver else None,
+                'approver': r.approver.username if r.approver_id else None,
                 'action': r.action,
-                'remark': r.remark,
+                'remark': r.comment or '',
                 'created_at': r.created_at.isoformat() if r.created_at else None
             } for r in records]
         }
@@ -419,15 +413,15 @@ class ApprovalFlowApproveView(APIView):
         except ApprovalFlow.DoesNotExist:
             return Response({'code': 40401, 'message': '审批流不存在或已审批'}, status=404)
 
-        if flow.current_approver != request.user:
+        if flow.current_approver_id != request.user.id:
             return Response({'code': 40301, 'message': '您不是当前审批人'}, status=403)
 
         ApprovalRecord.objects.create(
-            flow=flow,
+            flow_id=flow.id,
             approver=request.user,
             approver_role=request.user.role,
             action='approve',
-            remark=remark
+            comment=remark
         )
 
         flow.status = 'approved'
@@ -447,15 +441,15 @@ class ApprovalFlowRejectView(APIView):
         except ApprovalFlow.DoesNotExist:
             return Response({'code': 40401, 'message': '审批流不存在或已审批'}, status=404)
 
-        if flow.current_approver != request.user:
+        if flow.current_approver_id != request.user.id:
             return Response({'code': 40301, 'message': '您不是当前审批人'}, status=403)
 
         ApprovalRecord.objects.create(
-            flow=flow,
+            flow_id=flow.id,
             approver=request.user,
             approver_role=request.user.role,
             action='reject',
-            remark=remark
+            comment=remark
         )
 
         flow.status = 'rejected'
@@ -473,7 +467,7 @@ class ManagerPendingListView(APIView):
             return Response({'code': 40301, 'message': '仅项目经理或管理员可见'}, status=403)
 
         flows = ApprovalFlow.objects.filter(
-            current_approver=request.user,
+            current_approver_id=request.user.id,
             status='pending'
         ).order_by('-created_at')
 
@@ -481,8 +475,7 @@ class ManagerPendingListView(APIView):
             'id': f.id,
             'flow_type': f.flow_type,
             'applicant': f.applicant.username,
-            'applicant_role': f.applicant_role,
-            'project_id': f.project_id,
+            'applicant_role': f.applicant_role or '',
             'created_at': f.created_at.isoformat() if f.created_at else None
         } for f in flows]
 
