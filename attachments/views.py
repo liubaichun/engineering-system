@@ -301,32 +301,29 @@ class StorageStatsViewSet(viewsets.ViewSet):
     def by_project(self, request):
         """按项目统计存储空间"""
         from projects.models import Project
-        stats = []
-        for project in Project.objects.all():
-            pa_qs = ProjectAttachment.objects.filter(project=project)
-            total_size = sum(
-                a.file_size or 0 for a in Attachment.objects.filter(
-                    project_attachments__project=project
-                ).select_related('project_attachments')
-            )
-            # 更高效的方式
-            att_ids = list(pa_qs.values_list('attachment_id', flat=True))
-            if att_ids:
-                total_size = Attachment.objects.filter(id__in=att_ids).aggregate(
-                    total=models.Sum('file_size')
-                )['total'] or 0
-            else:
-                total_size = 0
-            stats.append({
-                'project_id': project.id,
-                'project_name': project.name,
-                'file_count': pa_qs.count(),
-                'total_size': total_size,
-                'total_size_mb': round(total_size / 1024 / 1024, 2),
+        from django.db.models import Count, Sum as OSSum
+        # 一次性查询：按项目分组统计
+        stats = (
+            Project.objects.annotate(
+                file_count=Count('attachments__id'),
+            ).values('id', 'name', 'file_count')
+        )
+        result = []
+        for s in stats:
+            project_id = s['id']
+            pa_ids = list(ProjectAttachment.objects.filter(project_id=project_id).values_list('attachment_id', flat=True))
+            total = 0
+            if pa_ids:
+                total = Attachment.objects.filter(id__in=pa_ids).aggregate(t=OSSum('file_size'))['t'] or 0
+            result.append({
+                'project_id': project_id,
+                'project_name': s['name'],
+                'file_count': s['file_count'],
+                'total_size': total,
+                'total_size_mb': round(total / 1024 / 1024, 2),
             })
-        # 按size排序
-        stats.sort(key=lambda x: x['total_size'], reverse=True)
-        return Response(stats)
+        result.sort(key=lambda x: x['total_size'], reverse=True)
+        return Response(result)
 
     @action(detail=False, methods=['get'])
     def by_category(self, request):
