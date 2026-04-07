@@ -1,101 +1,77 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ master, main, develop ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ master, main ]
+    branches: [ main, master ]
 
 jobs:
+  # 1. 代码格式检查
   lint:
-    name: Code Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-
-      - name: Install lint tools
-        run: |
-          pip install flake8 black isort
-
-      - name: Run flake8
-        run: |
-          flake8 . --max-line-length=120 --ignore=E501,W503 --count --show-source --statistics || true
-
-      - name: Run black check
-        run: |
-          black --check --diff . || true
-
-      - name: Run isort check
-        run: |
-          isort --check-only --diff . || true
-
-  test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    needs: lint
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_pass
-          POSTGRES_DB: test_db
-        ports:
-          - 5432:5432
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
+          
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt || true
-          pip install pytest pytest-django pytest-cov
-
-      - name: Run migrations
-        env:
-          DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/test_db
+          pip install -r requirements.txt
+          
+      - name: Check commit format
         run: |
-          python manage.py migrate --settings=engineering_system.settings_test || true
+          if [ -f scripts/check_commit_format.py ]; then
+            python scripts/check_commit_format.py "${{ github.event.commits[0].message }}"
+          fi
 
-      - name: Run tests
-        env:
-          DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/test_db
-        run: |
-          pytest --cov=. --cov-report=xml --cov-fail-under=30 -v || true
-
-  build:
-    name: Build Docker Image
+  # 2. 单元测试
+  test:
     runs-on: ubuntu-latest
-    needs: [lint, test]
-    if: github.ref == 'refs/heads/main'
-    
+    needs: lint
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          
+      - name: Run tests
+        run: |
+          python manage.py test --verbosity=2
 
+  # 3. 构建Docker镜像（仅push到main/master时）
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker image
-        run: |
-          docker build -t engineering:${{ github.sha }} .
-
-      - name: Save image as artifact
-        run: |
-          docker save engineering:${{ github.sha }} > engineering.tar
-          
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          name: docker-image
-          path: engineering.tar
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:latest
