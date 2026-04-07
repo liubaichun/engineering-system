@@ -150,7 +150,7 @@ REST_FRAMEWORK = {
 
 # ===================== Security Settings =====================
 # Force HTTPS/SSL
-SECURE_SSL_REDIRECT = True              # Redirect all HTTP to HTTPS
+SECURE_SSL_REDIRECT = False              # Redirect all HTTP to HTTPS
 SECURE_HSTS_SECONDS = 31536000          # HSTS: 1 year (31536000 seconds)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True   # Include subdomains in HSTS
 SECURE_HSTS_PRELOAD = True              # Allow HSTS preload list inclusion
@@ -180,8 +180,8 @@ THROTTLE_CACHE = 'default'
 
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.environ.get('CACHE_URL', 'redis://host.docker.internal:6379/1'),
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
     }
 }
 

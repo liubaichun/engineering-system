@@ -1,0 +1,17 @@
+stages:
+  - test
+
+commit_format_check:
+  stage: test
+  script:
+    - python scripts/check_commit_format.py
+  only:
+    - main
+
+unit_test:
+  stage: test
+  script:
+    - pip install -r requirements.txt
+    - python manage.py test --verbosity=2
+  only:
+    - main

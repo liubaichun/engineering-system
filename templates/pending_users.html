@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户注册审批 - 工程管理系统</title>
+    <link href="/static/local/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/local/css/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --color-primary: #0d6efd;
+            --color-primary-dark: #0b5ed7;
+            --sidebar-bg: #1a1a2e;
+            --sidebar-hover: #16213e;
+            --sidebar-text: #b8bcd4;
+            --sidebar-width: 240px;
+            --page-bg: #f0f2f5;
+        }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--page-bg); }
+        .sidebar { position: fixed; left: 0; top: 0; width: var(--sidebar-width); height: 100vh; background: var(--sidebar-bg); padding: 20px 0; overflow-y: auto; }
+        .sidebar h4 { color: #fff; padding: 0 20px 20px; margin: 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar a { display: block; padding: 12px 20px; color: var(--sidebar-text); text-decoration: none; transition: all 0.2s; }
+        .sidebar a:hover, .sidebar a.active { background: var(--sidebar-hover); color: #fff; }
+        .main { margin-left: var(--sidebar-width); padding: 30px; }
+        .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 20px; }
+        .page-title { font-size: 24px; font-weight: 600; margin-bottom: 24px; color: #333; }
+        .user-list { list-style: none; padding: 0; margin: 0; }
+        .user-item { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid #eee; }
+        .user-item:last-child { border-bottom: none; }
+        .user-info { display: flex; gap: 20px; align-items: center; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--color-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+        .user-details .username { font-weight: 600; color: #333; }
+        .user-details .meta { font-size: 12px; color: #999; margin-top: 2px; }
+        .user-actions { display: flex; gap: 8px; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+        .btn-approve { background: #198754; color: #fff; }
+        .btn-approve:hover { background: #157347; }
+        .btn-reject { background: #dc3545; color: #fff; }
+        .btn-reject:hover { background: #bb2d3a; }
+        .btn-pending { background: #ffc107; color: #000; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+        .empty-state i { font-size: 48px; margin-bottom: 16px; }
+        .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; }
+        .alert-success { background: #d1e7dd; color: #0f5132; }
+        .alert-error { background: #f8d7da; color: #842029; }
+        .loading { text-align: center; padding: 40px; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h4>👷 工程管理系统</h4>
+        <a href="/dashboard/">📊 控制台</a>
+        <a href="/users/">👥 用户管理</a>
+        <a href="/projects/">📁 项目管理</a>
+        <a href="/approvals/">✅ 考勤审批</a>
+        <a href="/approvals/?type=expense">💰 费用审批</a>
+        <a href="/logout/">🚪 退出登录</a>
+    </div>
+    
+    <div class="main">
+        <div class="card">
+            <h1 class="page-title">👤 用户注册审批</h1>
+            <div id="message-area"></div>
+            <div id="loading" class="loading">加载中...</div>
+            <div id="empty-state" class="empty-state" style="display:none;">
+                <i class="bi bi-check-circle"></i>
+                <p>暂无待审批用户</p>
+            </div>
+            <ul id="user-list" class="user-list" style="display:none;"></ul>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/v1';
+        
+        function getToken() {
+            return localStorage.getItem('auth_token') || '';
+        }
+        
+        function showMessage(msg, type) {
+            const area = document.getElementById('message-area');
+            area.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+            setTimeout(() => area.innerHTML = '', 3000);
+        }
+        
+        async function loadPendingUsers() {
+            const loading = document.getElementById('loading');
+            const emptyState = document.getElementById('empty-state');
+            const userList = document.getElementById('user-list');
+            
+            try {
+                const res = await fetch(`${API_BASE}/users/pending/`, {
+                    headers: { 'Authorization': `Token ${getToken()}` }
+                });
+                
+                if (res.status === 401) {
+                    showMessage('请先登录', 'error');
+                    setTimeout(() => window.location.href = '/login/', 1000);
+                    return;
+                }
+                if (res.status === 403) {
+                    showMessage('权限不足，仅管理员可访问', 'error');
+                    return;
+                }
+                
+                const data = await res.json();
+                loading.style.display = 'none';
+                
+                if (!data.length) {
+                    emptyState.style.display = 'block';
+                    return;
+                }
+                
+                userList.style.display = 'block';
+                userList.innerHTML = data.map(user => `
+                    <li class="user-item">
+                        <div class="user-info">
+                            <div class="user-avatar">${user.username[0].toUpperCase()}</div>
+                            <div class="user-details">
+                                <div class="username">${user.username}</div>
+                                <div class="meta">角色: ${user.role || 'dev'} | 注册时间: ${new Date(user.created_at).toLocaleString()}</div>
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn btn-approve" onclick="approveUser(${user.id})">✅ 批准</button>
+                            <button class="btn btn-reject" onclick="rejectUser(${user.id})">❌ 拒绝</button>
+                        </div>
+                    </li>
+                `).join('');
+            } catch (err) {
+                loading.innerHTML = '加载失败: ' + err.message;
+            }
+        }
+        
+        async function approveUser(id) {
+            if (!confirm('确认批准该用户？批准后用户可以正常登录。')) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/users/${id}/approve/`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Token ${getToken()}` }
+                });
+                
+                if (res.ok) {
+                    showMessage('用户已批准', 'success');
+                    loadPendingUsers();
+                } else {
+                    const data = await res.json();
+                    showMessage(data.detail || '操作失败', 'error');
+                }
+            } catch (err) {
+                showMessage('操作失败: ' + err.message, 'error');
+            }
+        }
+        
+        async function rejectUser(id) {
+            if (!confirm('确认拒绝该用户？拒绝后用户将被删除。')) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/users/${id}/reject/`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Token ${getToken()}` }
+                });
+                
+                if (res.ok) {
+                    showMessage('用户已拒绝', 'success');
+                    loadPendingUsers();
+                } else {
+                    const data = await res.json();
+                    showMessage(data.detail || '操作失败', 'error');
+                }
+            } catch (err) {
+                showMessage('操作失败: ' + err.message, 'error');
+            }
+        }
+        
+        loadPendingUsers();
+    </script>
+</body>
+</html>
