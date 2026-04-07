@@ -419,7 +419,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">角色</label>
-                        <input type="text" class="form-control" value="系统管理员" readonly>
+                        <input type="text" class="form-control" id="userRole" value="加载中..." readonly>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">邮箱</label>
@@ -650,6 +650,7 @@ function loadProfile() {
         .then(function(data) {
             if (!data) return;
             document.getElementById('username').value = data.username || '';
+            document.getElementById('userRole').value = data.role_display || data.role || '';
             document.getElementById('email').value = data.email || '';
             document.getElementById('phone').value = data.phone || '';
         }).catch(function(err) { console.error('加载个人信息失败', err); });
