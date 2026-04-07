@@ -20,12 +20,22 @@ jobs:
         with:
           python-version: '3.12'
           
+      - name: Debug - show commits
+        run: |
+          echo "=== 最新3条commits ==="
+          git log --oneline -3
+          echo ""
+          echo "=== 最新commit消息 ==="
+          git log -1 --format=%s
+          
       - name: Check commit format
         run: |
           if [ -f scripts/check_commit_format.py ]; then
             MSG=$(git log -1 --format=%s)
-            echo "检查commit: $MSG"
+            echo ">>> 传入脚本的消息: [$MSG]"
             python scripts/check_commit_format.py "$MSG"
+          else
+            echo "跳过：scripts/check_commit_format.py 不存在"
           fi
 
   # 2. 单元测试
