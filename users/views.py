@@ -150,9 +150,11 @@ class ChangePasswordView(generics.GenericAPIView):
 
 # 简单的路由函数视图
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def user_list(request):
-    """用户列表"""
+    """用户列表 - 仅管理员和项目经理可访问"""
+    if request.user.role not in ('admin', 'pm'):
+        return Response({'detail': '权限不足，仅管理员和项目经理可访问'}, status=403)
     users = User.objects.filter(is_active=True)
     serializer = UserSerializer(users, many=True)
     return Response(serializer.data)
@@ -291,7 +293,7 @@ class RegisterApprovalView(APIView):
         pu = UsersPendingApproval.objects.create(
             username=username,
             password=make_password(password),
-            email=username + '@example.com',  # placeholder
+            email=data.get('email', username + '@example.com'),
             phone=phone,
             role=role
         )

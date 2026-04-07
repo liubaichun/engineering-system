@@ -91,6 +91,9 @@ def projects_page(request):
 def dashboard_page(request):
     return render(request, 'dashboard.html')
 
+def users_page(request):
+    return render(request, 'users.html')
+
 def tasks_page(request):
     return render(request, 'tasks.html')
 
@@ -155,10 +158,12 @@ def metrics(request):
 urlpatterns = [
     path('api/v1/auth/login/', KnoxLoginViewOverride.as_view(), name='knox_login'),
     path('api/v1/auth/', include('knox.urls')),
+    path('api/v1/health/', lambda _: JsonResponse({'status': 'ok', 'service': 'engineering_system'}), name='health'),
     path('admin/', admin.site.urls),
     path('', index_page, name='index'),
     path('login/', login_page, name='login'),
     path('dashboard/', dashboard_page, name='dashboard'),
+    path('users/', users_page, name='users'),
     path('projects/', projects_page, name='projects'),
     path('tasks/', tasks_page, name='tasks'),
     path('customers/', customers_page, name='customers'),

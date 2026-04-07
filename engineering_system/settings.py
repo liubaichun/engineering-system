@@ -141,7 +141,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'login': '5/minute',      # Login attempts: 5 per minute
-        'register': '3/hour',     # Registration: 3 per hour
+        'register': '30/hour',     # Registration: 30 per hour
         'user': '50/minute',      # General API: 50 per minute (lowered)
         'anon': '20/minute',      # Anonymous: 20 per minute (new)
         '敏感API': '10/minute',   # Sensitive APIs: 10 per minute (new)
