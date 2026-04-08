@@ -146,6 +146,15 @@ def workers_page(request):
 def worker_location_page(request):
     return render(request, 'worker_location.html')
 
+def flow_templates_page(request):
+    return render(request, 'flow_templates.html')
+
+def flow_task_page(request):
+    return render(request, 'flow_task.html')
+
+def flow_dashboard_page(request):
+    return render(request, 'flow_dashboard.html')
+
 
 
 # Prometheus Metrics Endpoint
@@ -184,6 +193,9 @@ urlpatterns = [
     path('signin/admin/', signin_admin_page, name='signin_admin_page'),
     path('workers/', workers_page, name='workers_page'),
     path('files/', lambda request: render(request, 'files.html'), name='files_page'),
+    path('flow/templates/', flow_templates_page, name='flow_templates_page'),
+    path('flow/task/', flow_task_page, name='flow_task_page'),
+    path('flow/', flow_dashboard_page, name='flow_dashboard_page'),
     path('worker_location/', worker_location_page, name='worker_location_page'),
     path('api/v1/users/', include('users.urls')),
     path('api/v1/projects/', include('projects.urls')),
