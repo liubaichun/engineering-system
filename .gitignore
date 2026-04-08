@@ -30,7 +30,6 @@ media/
 *.swn
 
 # Docker
-Dockerfile
 docker-compose.yml
 .docker/
 
