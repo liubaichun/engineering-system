@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from datetime import timedelta
 
-from .models_flow import (
+from .models import (
     TaskType, FlowTemplate, FlowNodeTemplate, FlowTransition,
     TaskStageInstance, StageActivity
 )
@@ -22,7 +22,7 @@ from .serializers_flow import (
 )
 
 
-class Task_type_viewset(viewsets.ModelViewSet):
+class TaskTypeViewSet(viewsets.ModelViewSet):
     """任务类型管理"""
     queryset = TaskType.objects.all()
     serializer_class = TaskTypeSerializer
