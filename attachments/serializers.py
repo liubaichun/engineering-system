@@ -17,6 +17,8 @@ class AttachmentSerializer(serializers.ModelSerializer):
     category = serializers.PrimaryKeyRelatedField(
         queryset=AttachmentCategory.objects.all(), required=False, allow_null=True, write_only=True
     )
+    # uploader 字段不再前端传递，后端自动从 request.user 获取
+    uploader = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Attachment
@@ -25,7 +27,14 @@ class AttachmentSerializer(serializers.ModelSerializer):
             'file_size', 'md5', 'uploader', 'uploader_name', 'created_at',
             'category', 'category_name', 'category_code', 'sub_category'
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'uploader']
+
+    def create(self, validated_data):
+        # 自动设置 uploader 为当前登录用户
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['uploader'] = request.user
+        return super().create(validated_data)
 
 
 class ProjectAttachmentSerializer(serializers.ModelSerializer):
