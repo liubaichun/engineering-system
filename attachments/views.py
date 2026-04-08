@@ -105,7 +105,8 @@ class AttachmentViewSet(viewsets.ModelViewSet):
         if att_id:
             att = Attachment.objects.get(id=att_id)
             att.md5 = md5_hash
-            att.save(update_fields=['md5'])
+            att.file_size = file.size
+            att.save(update_fields=['md5', 'file_size'])
             # 自动生成缩略图（图片）
             if not att.thumbnail:
                 from .utils import create_thumbnail_for_attachment

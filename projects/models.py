@@ -43,6 +43,13 @@ class Project(models.Model):
         blank=True,
         null=True
     )
+    manager_display = models.CharField(
+        verbose_name='项目经理显示名',
+        max_length=100,
+        blank=True,
+        default='',
+        help_text='项目经理显示名（自由文本）'
+    )
     description = models.TextField(verbose_name='项目描述', blank=True, default='')
     created_at = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
     updated_at = models.DateTimeField(verbose_name='更新时间', auto_now=True)

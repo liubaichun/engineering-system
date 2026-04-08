@@ -256,13 +256,15 @@ class PendingUserRejectView(APIView):
         except UsersPendingApproval.DoesNotExist:
             return Response({'code': 40401, 'message': '申请不存在'}, status=status.HTTP_404_NOT_FOUND)
         
-        pu.status = 'rejected'
-        pu.reviewed_by = request.user
-        pu.reviewed_at = datetime.now()
-        pu.rejection_reason = remark
-        pu.save()
+        rejection_reason = remark
+        # 记录拒绝日志
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f'用户注册申请被拒绝: username={pu.username}, reason={rejection_reason}')
+        # 删除待审核记录
+        pu.delete()
         
-        return Response({'code': 0, 'message': '已拒绝'})
+        return Response({'code': 0, 'message': '已拒绝并删除申请记录'})
 
 
 # 修改注册视图 - 写入待审核表而非直接创建用户
