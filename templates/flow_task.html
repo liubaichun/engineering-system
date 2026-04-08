@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务执行</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .task-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 4px solid #0d6efd;
+        }
+        .task-card.completed { border-left-color: #198754; }
+        .task-card.blocked { border-left-color: #dc3545; }
+        .flow-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 0;
+            overflow-x: auto;
+        }
+        .flow-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 100px;
+        }
+        .flow-step-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+        .flow-step.pending .flow-step-icon { background: #e9ecef; color: #6c757d; }
+        .flow-step.active .flow-step-icon { background: #0d6efd; color: white; }
+        .flow-step.completed .flow-step-icon { background: #198754; color: white; }
+        .flow-step-line {
+            flex: 1;
+            height: 2px;
+            background: #dee2e6;
+            margin: 0 10px;
+            margin-top: -20px;
+        }
+        .flow-step.completed + .flow-step-line,
+        .flow-step-line.completed {
+            background: #198754;
+        }
+        .activity-item {
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .activity-item:last-child { border-bottom: none; }
+        .file-upload-zone {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .file-upload-zone:hover {
+            border-color: #0d6efd;
+            background: #f8f9ff;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-badge.pending { background: #e9ecef; color: #6c757d; }
+        .status-badge.active { background: #cfe2ff; color: #0d6efd; }
+        .status-badge.completed { background: #d1e7dd; color: #198754; }
+        .status-badge.overdue { background: #f8d7da; color: #dc3545; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/"><i class="bi bi-arrow-left"></i> 返回</a>
+            <span class="navbar-brand mb-0 h1">任务执行</span>
+            <div>
+                <button class="btn btn-light btn-sm" onclick="refreshTasks()">
+                    <i class="bi bi-arrow-clockwise"></i> 刷新
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- 筛选栏 -->
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-outline-primary btn-sm active" onclick="filterTasks('all')" id="filterAll">全部</button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="filterTasks('my')" id="filterMy">我的任务</button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="filterTasks('overdue')" id="filterOverdue">已超时</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="filterTasks('completed')" id="filterCompleted">已完成</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 任务列表 -->
+        <div id="taskList">
+            <div class="text-center text-muted py-5">
+                <div class="spinner-border" role="status"></div>
+                <p class="mt-2">加载中...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务详情Modal -->
+    <div class="modal fade" id="taskDetailModal" tabindex="-1" style="display: none;">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="taskDetailTitle">任务详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- 流程进度 -->
+                    <div class="flow-indicator mb-4" id="flowProgress">
+                        <!-- 动态生成 -->
+                    </div>
+
+                    <!-- 当前节点操作区 -->
+                    <div class="card mb-3" id="currentNodeCard">
+                        <div class="card-header">
+                            <i class="bi bi-play-circle"></i> 当前节点：<span id="currentNodeName">-</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <small class="text-muted">负责人</small>
+                                    <div id="currentNodeAssignee">-</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">截止时间</small>
+                                    <div id="currentNodeDeadline">-</div>
+                                </div>
+                            </div>
+
+                            <!-- 操作表单 -->
+                            <div id="nodeActions">
+                                <div class="mb-3">
+                                    <label class="form-label">处理意见</label>
+                                    <textarea class="form-control" id="nodeComment" rows="3" placeholder="请输入处理意见..."></textarea>
+                                </div>
+
+                                <div class="mb-3 file-upload-zone" id="uploadZone">
+                                    <i class="bi bi-cloud-arrow-up" style="font-size: 32px; color: #6c757d;"></i>
+                                    <p class="mb-1 mt-2">点击或拖拽上传文件</p>
+                                    <small class="text-muted">支持 PDF、图片、Word 等</small>
+                                    <input type="file" id="fileInput" style="display: none;" multiple>
+                                </div>
+                                <div id="fileList" class="mb-3"></div>
+
+                                <div class="mb-3" id="signoffSection">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="signoffConfirm">
+                                        <label class="form-check-label" for="signoffConfirm">
+                                            我确认已完成此节点的处理
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-success" onclick="completeNode()" id="btnComplete">
+                                        <i class="bi bi-check-lg"></i> 完成节点
+                                    </button>
+                                    <button class="btn btn-outline-secondary" onclick="transferNode()">
+                                        <i class="bi bi-arrow-right-circle"></i> 转交
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="rejectNode()">
+                                        <i class="bi bi-x-circle"></i> 驳回
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 操作历史 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-clock-history"></i> 操作历史
+                        </div>
+                        <div class="card-body" id="activityHistory">
+                            <div class="text-muted text-center py-3">暂无记录</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 转交Modal -->
+    <div class="modal fade" id="transferModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">转交任务</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择接收人</label>
+                        <select class="form-select" id="transferUser">
+                            <option value="">请选择...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">转交说明</label>
+                        <textarea class="form-control" id="transferComment" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmTransfer()">确认转交</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_BASE = '/api/v1/tasks';
+        let currentTask = null;
+        let currentFilter = 'all';
+        let taskDetailModal, transferModal;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            taskDetailModal = new bootstrap.Modal(document.getElementById('taskDetailModal'));
+            transferModal = new bootstrap.Modal(document.getElementById('transferModal'));
+            loadTasks();
+            setupUploadZone();
+        });
+
+        function getAuthHeaders() {
+            const token = localStorage.getItem('auth_token');
+            return token ? { 'Authorization': 'Token ' + token } : {};
+        }
+
+        function getCurrentUserId() {
+            return localStorage.getItem('user_id');
+        }
+
+        async function loadTasks() {
+            try {
+                const resp = await fetch(API_BASE + '/', { headers: getAuthHeaders() });
+                if (!resp.ok) throw new Error('加载失败');
+                const data = await resp.json();
+                renderTasks(data.results || data);
+            } catch (e) {
+                console.error(e);
+                document.getElementById('taskList').innerHTML = 
+                    '<div class="alert alert-danger">加载失败</div>';
+            }
+        }
+
+        function filterTasks(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('[id^="filter"]').forEach(el => el.classList.remove('active'));
+            document.getElementById('filter' + filter.charAt(0).toUpperCase() + filter.slice(1)).classList.add('active');
+            loadTasks();
+        }
+
+        function renderTasks(tasks) {
+            const container = document.getElementById('taskList');
+            
+            let filteredTasks = tasks;
+            const userId = getCurrentUserId();
+            
+            if (currentFilter === 'my') {
+                filteredTasks = tasks.filter(t => t.assigned_to == userId);
+            } else if (currentFilter === 'overdue') {
+                filteredTasks = tasks.filter(t => t.is_overdue);
+            } else if (currentFilter === 'completed') {
+                filteredTasks = tasks.filter(t => t.status === 'completed');
+            }
+
+            if (filteredTasks.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted py-5"><i class="bi bi-inbox" style="font-size: 48px;"></i><p class="mt-2">暂无任务</p></div>';
+                return;
+            }
+
+            container.innerHTML = filteredTasks.map(task => `
+                <div class="task-card ${task.status}" onclick="openTaskDetail(${task.id})">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h5 class="mb-1">${task.name}</h5>
+                            <small class="text-muted">${task.project_name || '无项目'}</small>
+                        </div>
+                        <span class="status-badge ${task.is_overdue ? 'overdue' : task.status}">
+                            ${task.is_overdue ? '<i class="bi bi-exclamation-circle"></i> 超时' : 
+                              task.status === 'completed' ? '<i class="bi bi-check-circle"></i> 已完成' :
+                              task.status === 'in_progress' ? '<i class="bi bi-play-circle"></i> 进行中' : '待处理'}
+                        </span>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <small class="text-muted">负责人</small>
+                            <div>${task.manager_display || '-'}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted">当前阶段</small>
+                            <div>${task.current_stage_name || '-'}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted">截止时间</small>
+                            <div class="${task.is_overdue ? 'text-danger' : ''}">${task.deadline || '-'}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function openTaskDetail(taskId) {
+            try {
+                const resp = await fetch(API_BASE + '/' + taskId + '/', { headers: getAuthHeaders() });
+                if (!resp.ok) throw new Error('加载失败');
+                currentTask = await resp.json();
+                renderTaskDetail();
+                taskDetailModal.show();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        function renderTaskDetail() {
+            document.getElementById('taskDetailTitle').textContent = currentTask.name;
+            
+            // 渲染流程进度
+            const stages = currentTask.stage_instances || [];
+            let progressHtml = '';
+            stages.forEach((stage, index) => {
+                const statusClass = stage.status === 'completed' ? 'completed' : 
+                                   stage.status === 'in_progress' ? 'active' : 'pending';
+                const icon = stage.status === 'completed' ? 'check' : 
+                            stage.status === 'in_progress' ? 'play-fill' : 'circle';
+                
+                progressHtml += `
+                    <div class="flow-step ${statusClass}">
+                        <div class="flow-step-icon">
+                            <i class="bi bi-${icon}"></i>
+                        </div>
+                        <small>${stage.node_name}</small>
+                    </div>
+                `;
+                if (index < stages.length - 1) {
+                    progressHtml += `<div class="flow-step-line ${stages[index].status === 'completed' ? 'completed' : ''}"></div>`;
+                }
+            });
+            document.getElementById('flowProgress').innerHTML = progressHtml || '<div class="text-muted">暂无流程</div>';
+
+            // 当前节点信息
+            const currentStage = stages.find(s => s.status === 'in_progress' || s.status === 'pending');
+            if (currentStage) {
+                document.getElementById('currentNodeName').textContent = currentStage.node_name;
+                document.getElementById('currentNodeAssignee').textContent = currentStage.assigned_to_name || '未分配';
+                document.getElementById('currentNodeDeadline').textContent = currentStage.deadline || '未设置';
+            } else {
+                document.getElementById('currentNodeCard').style.display = 'none';
+            }
+
+            // 操作历史
+            let historyHtml = '';
+            stages.forEach(stage => {
+                (stage.activities || []).forEach(act => {
+                    const actionIcon = {
+                        'create': 'plus-circle',
+                        'start': 'play-fill',
+                        'complete': 'check-circle',
+                        'upload': 'cloud-upload',
+                        'signoff': 'check-all',
+                        'approve': 'check-lg',
+                        'reject': 'x-circle',
+                        'comment': 'chat-left-text',
+                        'transfer': 'arrow-right-circle'
+                    }[act.action_type] || 'circle';
+                    
+                    historyHtml += `
+                        <div class="activity-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <i class="bi bi-${actionIcon}"></i>
+                                    <strong>${act.operator_name || '系统'}</strong>
+                                    ${act.action_type === 'create' ? '创建了任务' :
+                                      act.action_type === 'complete' ? '完成了节点' :
+                                      act.action_type === 'transfer' ? act.content :
+                                      '执行了' + act.action_type}
+                                </div>
+                                <small class="text-muted">${new Date(act.created_at).toLocaleString()}</small>
+                            </div>
+                            ${act.content ? '<div class="text-muted mt-1">'+act.content+'</div>' : ''}
+                        </div>
+                    `;
+                });
+            });
+            document.getElementById('activityHistory').innerHTML = historyHtml || '<div class="text-muted text-center py-3">暂无记录</div>';
+        }
+
+        function setupUploadZone() {
+            const zone = document.getElementById('uploadZone');
+            const input = document.getElementById('fileInput');
+            
+            zone.addEventListener('click', () => input.click());
+            zone.addEventListener('dragover', e => {
+                e.preventDefault();
+                zone.style.borderColor = '#0d6efd';
+            });
+            zone.addEventListener('dragleave', () => {
+                zone.style.borderColor = '#dee2e6';
+            });
+            zone.addEventListener('drop', e => {
+                e.preventDefault();
+                zone.style.borderColor = '#dee2e6';
+                handleFiles(e.dataTransfer.files);
+            });
+            input.addEventListener('change', () => handleFiles(input.files));
+        }
+
+        let uploadedFiles = [];
+        function handleFiles(files) {
+            for (const file of files) {
+                uploadedFiles.push(file);
+                const fileList = document.getElementById('fileList');
+                fileList.innerHTML += `
+                    <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded mb-1">
+                        <span><i class="bi bi-file-earmark"></i> ${file.name}</span>
+                        <button class="btn btn-sm text-danger" onclick="removeFile(this, '${file.name}')">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function removeFile(btn, filename) {
+            uploadedFiles = uploadedFiles.filter(f => f.name !== filename);
+            btn.closest('div').remove();
+        }
+
+        async function completeNode() {
+            if (!currentTask) return;
+            
+            const comment = document.getElementById('nodeComment').value;
+            
+            try {
+                const resp = await fetch(API_BASE + '/' + currentTask.id + '/complete_node/', {
+                    method: 'POST',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
+                    body: JSON.stringify({ action: 'complete', content: comment })
+                });
+                
+                if (!resp.ok) throw new Error('操作失败');
+                
+                alert('节点已完成');
+                taskDetailModal.hide();
+                loadTasks();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function transferNode() {
+            // 加载用户列表
+            try {
+                const resp = await fetch('/api/v1/users/', { headers: getAuthHeaders() });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const users = data.results || data;
+                    document.getElementById('transferUser').innerHTML = 
+                        '<option value="">请选择...</option>' + 
+                        users.map(u => `<option value="${u.id}">${u.username}</option>`).join('');
+                }
+            } catch (e) {}
+            
+            transferModal.show();
+        }
+
+        async function confirmTransfer() {
+            const userId = document.getElementById('transferUser').value;
+            const comment = document.getElementById('transferComment').value;
+            
+            if (!userId) {
+                alert('请选择接收人');
+                return;
+            }
+            
+            try {
+                const resp = await fetch(API_BASE + '/' + currentTask.id + '/transfer_node/', {
+                    method: 'POST',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
+                    body: JSON.stringify({ assignee_id: userId, content: comment })
+                });
+                
+                if (!resp.ok) throw new Error('操作失败');
+                
+                alert('已转交');
+                transferModal.hide();
+                taskDetailModal.hide();
+                loadTasks();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function rejectNode() {
+            const comment = prompt('请输入驳回原因：');
+            if (!comment) return;
+            
+            try {
+                const resp = await fetch(API_BASE + '/' + currentTask.id + '/complete_node/', {
+                    method: 'POST',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
+                    body: JSON.stringify({ action: 'reject', content: comment })
+                });
+                
+                if (!resp.ok) throw new Error('操作失败');
+                
+                alert('已驳回');
+                taskDetailModal.hide();
+                loadTasks();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        function refreshTasks() {
+            loadTasks();
+        }
+    </script>
+</body>
+</html>

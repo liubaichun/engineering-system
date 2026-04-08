@@ -42,6 +42,30 @@ class Task(models.Model):
         default='',
         help_text='负责人显示名（自由文本，不关联用户表）'
     )
+    task_type = models.ForeignKey(
+        'TaskType',
+        verbose_name='任务类型',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='tasks'
+    )
+    flow_template = models.ForeignKey(
+        'FlowTemplate',
+        verbose_name='流程模板',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='tasks'
+    )
+    current_stage = models.ForeignKey(
+        'FlowNodeTemplate',
+        verbose_name='当前阶段',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='current_tasks'
+    )
     status = models.CharField(verbose_name='任务状态', max_length=20, choices=STATUS_CHOICES, default='pending')
     priority = models.CharField(verbose_name='优先级', max_length=10, choices=PRIORITY_CHOICES, default='medium')
     progress = models.IntegerField(verbose_name='进度', default=0)
