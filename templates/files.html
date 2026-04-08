@@ -313,12 +313,35 @@
         document.getElementById('detailFooter').innerHTML =
             '<button class="btn btn-outline-danger" onclick="deleteFile(' + f.id + ')"><i class="bi bi-trash me-1"></i>删除</button>' +
             '<button class="btn btn-success" onclick="downloadFile(' + f.id + ')"><i class="bi bi-download me-1"></i>下载</button>' +
-            '<button class="btn btn-primary" onclick="window.open(\'' + (f.file || '#') + '\', \'_blank\')"><i class="bi bi-eye me-1"></i>预览</button>';
+            '<button class="btn btn-primary" onclick="viewFile(' + f.id + ')"><i class="bi bi-eye me-1"></i>预览</button>';
         new bootstrap.Modal(document.getElementById('detailModal')).show();
     }
 
+
+    async function viewFile(id) {
+        const resp = await fetch(API_BASE + id + '/view_file/', { headers: authHeaders() });
+        if (resp.ok) {
+            const blob = await resp.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+        } else { alert('预览失败，请确认文件类型支持'); }
+    }
+
     async function downloadFile(id) {
-        window.open(API_BASE + id + '/download/', '_blank');
+        const resp = await fetch(API_BASE + id + '/download/', { headers: authHeaders() });
+        if (resp.ok) {
+            const blob = await resp.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url;
+            const cd = resp.headers.get('Content-Disposition');
+            let filename = 'download';
+            if (cd) {
+                const m = cd.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                if (m) filename = m[1].replace(/['"]/g, '');
+            }
+            a.download = filename; a.click();
+            URL.revokeObjectURL(url);
+        } else { alert('下载失败，请重新登录'); }
     }
 
     async function deleteFile(id) {

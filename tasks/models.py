@@ -35,6 +35,13 @@ class Task(models.Model):
         blank=True,
         null=True
     )
+    manager_display = models.CharField(
+        verbose_name='负责人显示名',
+        max_length=100,
+        blank=True,
+        default='',
+        help_text='负责人显示名（自由文本，不关联用户表）'
+    )
     status = models.CharField(verbose_name='任务状态', max_length=20, choices=STATUS_CHOICES, default='pending')
     priority = models.CharField(verbose_name='优先级', max_length=10, choices=PRIORITY_CHOICES, default='medium')
     progress = models.IntegerField(verbose_name='进度', default=0)
