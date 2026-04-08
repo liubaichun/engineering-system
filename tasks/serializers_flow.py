@@ -3,7 +3,7 @@
 """
 
 from rest_framework import serializers
-from .models_flow import (
+from .models import (
     TaskType, FlowTemplate, FlowNodeTemplate, FlowTransition,
     TaskStageInstance, StageActivity
 )
