@@ -321,7 +321,6 @@ class ApprovalFlowCreateView(APIView):
         flow_type = request.data.get('flow_type', 'leave')
         target_object_type = request.data.get('target_object_type', '')
         target_object_id = request.data.get('target_object_id')
-        project_id = request.data.get('project_id')
 
         approver = self._find_first_approver(request.user, flow_type)
         if approver is None:
@@ -333,10 +332,16 @@ class ApprovalFlowCreateView(APIView):
             flow_type=flow_type,
             target_object_type=target_object_type,
             target_object_id=target_object_id,
-            project_id=project_id,
-            applicant_role=request.user.role,
-            current_approver_id=approver.id,
             status='pending'
+        )
+
+        # Create initial approval record for the first approver
+        ApprovalRecord.objects.create(
+            flow=flow,
+            approver=approver,
+            node=1,
+            action='pending',
+            comment=''
         )
 
         return Response({
@@ -344,7 +349,7 @@ class ApprovalFlowCreateView(APIView):
             'message': '审批流已创建',
             'flow_id': flow.id,
             'current_approver': approver.username
-        })
+        }, status=201)
 
     def _find_first_approver(self, user, flow_type):
         """查找第一个审批人，admin用户不入审批流"""
@@ -389,22 +394,28 @@ class ApprovalFlowListView(APIView):
         user = request.user
         filter_type = request.query_params.get('filter', 'all')
 
+        # Get pending flow IDs where user is the current approver based on records
+        pending_record_flow_ids = ApprovalRecord.objects.filter(
+            approver=user,
+            flow__status='pending'
+        ).values_list('flow_id', flat=True)
+
         if filter_type == 'my_pending':
-            flows = ApprovalFlow.objects.filter(current_approver_id=user.id, status='pending')
+            flows = ApprovalFlow.objects.filter(id__in=pending_record_flow_ids, status='pending')
         elif filter_type == 'my_applied':
             flows = ApprovalFlow.objects.filter(applicant=user)
         else:
-            flows = ApprovalFlow.objects.filter(applicant=user) | ApprovalFlow.objects.filter(current_approver_id=user.id)
+            flows = ApprovalFlow.objects.filter(applicant=user) | ApprovalFlow.objects.filter(id__in=pending_record_flow_ids)
 
         flows = flows.distinct().order_by('-created_at')[:50]
         data = [{
             'id': f.id,
             'flow_type': f.flow_type,
             'applicant': f.applicant.username,
-            'applicant_role': f.applicant_role or '',
-            'project_id': f.project_id,
+            'applicant_role': f.applicant.role or '',
+            'target_object_type': f.target_object_type or '',
+            'target_object_id': f.target_object_id,
             'status': f.status,
-            'current_approver': f.current_approver.username if f.current_approver_id else None,
             'created_at': f.created_at.isoformat() if f.created_at else None
         } for f in flows]
 
@@ -426,10 +437,11 @@ class ApprovalFlowDetailView(APIView):
             'id': flow.id,
             'flow_type': flow.flow_type,
             'applicant': flow.applicant.username,
-            'applicant_role': flow.applicant_role or '',
-            'project_id': flow.project_id,
+            'applicant_role': flow.applicant.role or '',
+            'target_object_type': flow.target_object_type or '',
+            'target_object_id': flow.target_object_id,
             'status': flow.status,
-            'current_approver': flow.current_approver.username if flow.current_approver_id else None,
+            'current_node': flow.current_node,
             'created_at': flow.created_at.isoformat() if flow.created_at else None,
             'records': [{
                 'approver': r.approver.username if r.approver_id else None,
