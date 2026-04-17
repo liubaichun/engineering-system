@@ -9,7 +9,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 
-from apps.flow_engine.models import TaskFlowInstance, StageActivity
+from apps.flow_engine.models import TaskFlowInstance
+from tasks.models import StageActivity  # 使用tasks模块中已有的StageActivity
 from apps.flow_engine.serializers import (
     TaskFlowInstanceSerializer,
     StageActivitySerializer,

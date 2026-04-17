@@ -3,11 +3,10 @@
 实现流程的创建、流转、转交、完成等核心功能
 """
 import logging
-from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
+from datetime import timedelta
+from typing import Optional, Dict
 from django.db import transaction
 from django.utils import timezone
-from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -53,39 +52,23 @@ class FlowEngine:
         initiator=None,
         context_data: Optional[Dict] = None,
         start_node=None
-    ) -> 'TaskFlowInstance':
-        """
-        发起流程
-        
-        Args:
-            task: 关联的任务实例
-            template: 流程模板（可选）
-            initiator: 流程发起人
-            context_data: 流程上下文数据
-            start_node: 起始节点（可选，默认使用模板的起始节点）
-        
-        Returns:
-            TaskFlowInstance: 创建的流程实例
-        """
-        from apps.flow_engine.models import TaskFlowInstance, StageActivity
-        from tasks.models import FlowTemplate, FlowNodeTemplate, TaskStageInstance
+    ):
+        """发起流程"""
+        from apps.flow_engine.models import TaskFlowInstance
+        from tasks.models import StageActivity, FlowNodeTemplate, TaskStageInstance
         
         with transaction.atomic():
-            # 如果没有指定模板，尝试从任务获取
             if template is None:
                 template = task.flow_template
             
-            # 确定起始节点
             if start_node is None and template:
                 start_node = template.nodes.filter(is_start=True).first()
             
             if start_node is None:
                 raise NodeNotFoundError("未找到流程起始节点")
             
-            # 计算截止时间
             deadline = self.now + timedelta(hours=start_node.duration_hours) if start_node.duration_hours else None
             
-            # 创建流程实例
             flow_instance = TaskFlowInstance.objects.create(
                 task=task,
                 template=template,
@@ -97,7 +80,6 @@ class FlowEngine:
                 context_data=context_data or {}
             )
             
-            # 创建阶段实例
             stage_instance = TaskStageInstance.objects.create(
                 task=task,
                 template_node=start_node,
@@ -108,11 +90,9 @@ class FlowEngine:
                 deadline=deadline
             )
             
-            # 更新任务的当前阶段
             task.current_stage = start_node
             task.save(update_fields=['current_stage'])
             
-            # 记录活动
             StageActivity.objects.create(
                 stage_instance=stage_instance,
                 operator=initiator or task.manager,
@@ -132,26 +112,12 @@ class FlowEngine:
         operator=None,
         action: str = 'complete',
         remark: str = ''
-    ) -> 'TaskStageInstance':
-        """
-        流转到下一节点
-        
-        Args:
-            task: 任务实例
-            target_node: 目标节点对象（可选）
-            target_node_id: 目标节点ID（可选）
-            operator: 操作人
-            action: 操作类型 (complete/reject)
-            remark: 备注
-        
-        Returns:
-            TaskStageInstance: 新的阶段实例
-        """
-        from apps.flow_engine.models import TaskFlowInstance, StageActivity
-        from tasks.models import TaskStageInstance, FlowNodeTemplate
+    ):
+        """流转到下一节点"""
+        from apps.flow_engine.models import TaskFlowInstance
+        from tasks.models import StageActivity, FlowNodeTemplate, TaskStageInstance
         
         with transaction.atomic():
-            # 获取当前流程实例
             try:
                 flow_instance = task.flow_instance
             except TaskFlowInstance.DoesNotExist:
@@ -160,20 +126,16 @@ class FlowEngine:
             if flow_instance.status != 'active':
                 raise InvalidTransitionError(f"流程状态不允许流转，当前状态：{flow_instance.status}")
             
-            # 获取目标节点
             if target_node is None:
                 if target_node_id:
                     target_node = FlowNodeTemplate.objects.get(id=target_node_id)
                 else:
-                    # 自动查找下一节点
                     current_node = flow_instance.current_node
                     target_node = self._get_next_node(current_node, action)
             
             if target_node is None:
-                # 如果没有下一节点，则流程结束
                 return self.complete_flow(task, operator)
             
-            # 完成当前阶段
             current_stage = TaskStageInstance.objects.filter(
                 task=task,
                 status='in_progress'
@@ -184,7 +146,6 @@ class FlowEngine:
                 current_stage.completed_at = self.now
                 current_stage.save()
                 
-                # 记录当前节点活动
                 StageActivity.objects.create(
                     stage_instance=current_stage,
                     operator=operator,
@@ -192,7 +153,6 @@ class FlowEngine:
                     content=remark or f'节点已完成，转入：{target_node.name}'
                 )
             
-            # 创建新的阶段实例
             deadline = self.now + timedelta(hours=target_node.duration_hours) if target_node.duration_hours else None
             
             new_stage = TaskStageInstance.objects.create(
@@ -205,16 +165,13 @@ class FlowEngine:
                 deadline=deadline
             )
             
-            # 更新流程实例
             flow_instance.current_node = target_node
             flow_instance.deadline = deadline
             flow_instance.save()
             
-            # 更新任务当前阶段
             task.current_stage = target_node
             task.save(update_fields=['current_stage'])
             
-            # 记录新节点活动
             StageActivity.objects.create(
                 stage_instance=new_stage,
                 operator=operator,
@@ -226,7 +183,7 @@ class FlowEngine:
             
         return new_stage
     
-    def _get_next_node(self, current_node, action: str = 'complete') -> Optional['FlowNodeTemplate']:
+    def _get_next_node(self, current_node, action: str = 'complete'):
         """获取下一节点"""
         from tasks.models import FlowTransition
         
@@ -235,17 +192,13 @@ class FlowEngine:
         ).order_by('from_node__order')
         
         for transition in transitions:
-            # 根据action筛选目标节点
             if action == 'complete':
-                # 完成操作通常流向下一个正常节点
                 if not transition.to_node.is_end:
                     return transition.to_node
             elif action == 'reject':
-                # 驳回操作可能流向驳回节点
                 if transition.to_node.name in ['驳回', '重试', 'reject']:
                     return transition.to_node
         
-        # 如果没找到特定节点，返回第一个可用的
         for transition in transitions:
             return transition.to_node
         
@@ -258,16 +211,10 @@ class FlowEngine:
         User = get_user_model()
         
         if node.responsible_type == 'user':
-            # 指定人员
             user_ids = node.responsible_users or []
             if user_ids:
                 return User.objects.filter(id__in=user_ids).first()
         
-        elif node.responsible_type == 'role':
-            # 角色关联 - 简化处理，返回任务的原负责人
-            pass
-        
-        # 默认返回任务负责人或操作人
         return task.manager or operator
     
     def transfer_to(
@@ -276,24 +223,12 @@ class FlowEngine:
         target_user,
         operator=None,
         remark: str = ''
-    ) -> 'TaskStageInstance':
-        """
-        转交流程给其他人
-        
-        Args:
-            task: 任务实例
-            target_user: 目标用户
-            operator: 操作人
-            remark: 转交原因
-        
-        Returns:
-            TaskStageInstance: 当前阶段实例
-        """
-        from apps.flow_engine.models import TaskFlowInstance, StageActivity
-        from tasks.models import TaskStageInstance
+    ):
+        """转交流程给其他人"""
+        from apps.flow_engine.models import TaskFlowInstance
+        from tasks.models import StageActivity, TaskStageInstance
         
         with transaction.atomic():
-            # 获取当前流程实例
             try:
                 flow_instance = task.flow_instance
             except TaskFlowInstance.DoesNotExist:
@@ -302,7 +237,6 @@ class FlowEngine:
             if flow_instance.status != 'active':
                 raise TransferError(f"流程状态不允许转交，当前状态：{flow_instance.status}")
             
-            # 获取当前阶段
             current_stage = TaskStageInstance.objects.filter(
                 task=task,
                 status='in_progress'
@@ -313,11 +247,9 @@ class FlowEngine:
             
             old_assignee = current_stage.assigned_to
             
-            # 更新阶段负责人
             current_stage.assigned_to = target_user
             current_stage.save()
             
-            # 记录转交活动
             StageActivity.objects.create(
                 stage_instance=current_stage,
                 operator=operator,
@@ -329,34 +261,17 @@ class FlowEngine:
             
         return current_stage
     
-    def complete_flow(
-        self,
-        task,
-        operator=None,
-        remark: str = ''
-    ) -> 'TaskFlowInstance':
-        """
-        完成流程
-        
-        Args:
-            task: 任务实例
-            operator: 操作人
-            remark: 备注
-        
-        Returns:
-            TaskFlowInstance: 完成的流程实例
-        """
-        from apps.flow_engine.models import TaskFlowInstance, StageActivity
-        from tasks.models import TaskStageInstance
+    def complete_flow(self, task, operator=None, remark: str = ''):
+        """完成流程"""
+        from apps.flow_engine.models import TaskFlowInstance
+        from tasks.models import StageActivity, TaskStageInstance
         
         with transaction.atomic():
-            # 获取当前流程实例
             try:
                 flow_instance = task.flow_instance
             except TaskFlowInstance.DoesNotExist:
                 raise FlowNotFoundError("任务未关联流程实例")
             
-            # 完成当前阶段
             current_stage = TaskStageInstance.objects.filter(
                 task=task,
                 status='in_progress'
@@ -367,7 +282,6 @@ class FlowEngine:
                 current_stage.completed_at = self.now
                 current_stage.save()
                 
-                # 记录活动
                 StageActivity.objects.create(
                     stage_instance=current_stage,
                     operator=operator,
@@ -375,12 +289,10 @@ class FlowEngine:
                     content=remark or '流程已完成'
                 )
             
-            # 更新流程实例状态
             flow_instance.status = 'completed'
             flow_instance.completed_at = self.now
             flow_instance.save()
             
-            # 更新任务状态
             task.status = 'completed'
             task.current_stage = None
             task.save(update_fields=['status', 'current_stage'])
@@ -389,28 +301,12 @@ class FlowEngine:
             
         return flow_instance
     
-    def cancel_flow(
-        self,
-        task,
-        operator=None,
-        remark: str = ''
-    ) -> 'TaskFlowInstance':
-        """
-        取消流程
-        
-        Args:
-            task: 任务实例
-            operator: 操作人
-            remark: 取消原因
-        
-        Returns:
-            TaskFlowInstance: 取消的流程实例
-        """
-        from apps.flow_engine.models import TaskFlowInstance, StageActivity
-        from tasks.models import TaskStageInstance
+    def cancel_flow(self, task, operator=None, remark: str = ''):
+        """取消流程"""
+        from apps.flow_engine.models import TaskFlowInstance
+        from tasks.models import StageActivity, TaskStageInstance
         
         with transaction.atomic():
-            # 获取当前流程实例
             try:
                 flow_instance = task.flow_instance
             except TaskFlowInstance.DoesNotExist:
@@ -419,7 +315,6 @@ class FlowEngine:
             if flow_instance.status not in ['active', 'draft']:
                 raise InvalidTransitionError(f"流程状态不允许取消，当前状态：{flow_instance.status}")
             
-            # 完成当前阶段（如果有）
             current_stage = TaskStageInstance.objects.filter(
                 task=task,
                 status='in_progress'
@@ -437,12 +332,10 @@ class FlowEngine:
                     content=f'流程已取消: {remark}'
                 )
             
-            # 更新流程实例
             flow_instance.status = 'cancelled'
             flow_instance.completed_at = self.now
             flow_instance.save()
             
-            # 更新任务状态
             task.status = 'blocked'
             task.save(update_fields=['status'])
             
@@ -450,25 +343,10 @@ class FlowEngine:
             
         return flow_instance
     
-    def suspend_flow(
-        self,
-        task,
-        operator=None,
-        remark: str = ''
-    ) -> 'TaskFlowInstance':
-        """
-        暂停流程
-        
-        Args:
-            task: 任务实例
-            operator: 操作人
-            remark: 暂停原因
-        
-        Returns:
-            TaskFlowInstance: 暂停的流程实例
-        """
-        from apps.flow_engine.models import TaskFlowInstance, StageActivity
-        from tasks.models import TaskStageInstance
+    def suspend_flow(self, task, operator=None, remark: str = ''):
+        """暂停流程"""
+        from apps.flow_engine.models import TaskFlowInstance
+        from tasks.models import StageActivity, TaskStageInstance
         
         with transaction.atomic():
             try:
@@ -479,7 +357,6 @@ class FlowEngine:
             if flow_instance.status != 'active':
                 raise InvalidTransitionError(f"流程状态不允许暂停，当前状态：{flow_instance.status}")
             
-            # 完成当前阶段
             current_stage = TaskStageInstance.objects.filter(
                 task=task,
                 status='in_progress'
@@ -493,7 +370,6 @@ class FlowEngine:
                     content=f'流程已暂停: {remark}'
                 )
             
-            # 更新流程实例
             flow_instance.status = 'suspended'
             flow_instance.save()
             
@@ -501,25 +377,10 @@ class FlowEngine:
             
         return flow_instance
     
-    def resume_flow(
-        self,
-        task,
-        operator=None,
-        remark: str = ''
-    ) -> 'TaskFlowInstance':
-        """
-        恢复已暂停的流程
-        
-        Args:
-            task: 任务实例
-            operator: 操作人
-            remark: 备注
-        
-        Returns:
-            TaskFlowInstance: 恢复的流程实例
-        """
-        from apps.flow_engine.models import TaskFlowInstance, StageActivity
-        from tasks.models import TaskStageInstance
+    def resume_flow(self, task, operator=None, remark: str = ''):
+        """恢复流程"""
+        from apps.flow_engine.models import TaskFlowInstance
+        from tasks.models import StageActivity, TaskStageInstance
         
         with transaction.atomic():
             try:
@@ -530,26 +391,10 @@ class FlowEngine:
             if flow_instance.status != 'suspended':
                 raise InvalidTransitionError(f"流程状态不允许恢复，当前状态：{flow_instance.status}")
             
-            # 重新激活当前阶段
             current_stage = TaskStageInstance.objects.filter(
                 task=task,
                 status='in_progress'
             ).first()
-            
-            if current_stage is None:
-                # 如果没有进行中的阶段，创建新的
-                current_node = flow_instance.current_node
-                if current_node:
-                    deadline = self.now + timedelta(hours=current_node.duration_hours) if current_node.duration_hours else None
-                    current_stage = TaskStageInstance.objects.create(
-                        task=task,
-                        template_node=current_node,
-                        order=current_node.order,
-                        assigned_to=self._resolve_responsible_user(current_node, task, operator),
-                        status='in_progress',
-                        started_at=self.now,
-                        deadline=deadline
-                    )
             
             if current_stage:
                 StageActivity.objects.create(
@@ -559,7 +404,6 @@ class FlowEngine:
                     content=f'流程已恢复: {remark}'
                 )
             
-            # 更新流程实例
             flow_instance.status = 'active'
             flow_instance.save()
             
@@ -567,37 +411,19 @@ class FlowEngine:
             
         return flow_instance
     
-    def get_flow_progress(self, task) -> Dict[str, Any]:
-        """
-        获取流程进度
+    def get_flow_progress(self, task):
+        """获取流程进度"""
+        from tasks.models import TaskStageInstance, FlowNodeTemplate
         
-        Args:
-            task: 任务实例
+        stages = TaskStageInstance.objects.filter(task=task).order_by('order')
+        total = stages.count()
+        if total == 0:
+            return {'total': 0, 'completed': 0, 'progress': 0}
         
-        Returns:
-            Dict: 进度信息
-        """
-        from tasks.models import TaskStageInstance
-        
-        total_nodes = 0
-        completed_nodes = 0
-        
-        if task.flow_instance and task.flow_instance.template:
-            total_nodes = task.flow_instance.template.nodes.count()
-        
-        completed_nodes = TaskStageInstance.objects.filter(
-            task=task,
-            status='completed'
-        ).count()
-        
-        progress = 0
-        if total_nodes > 0:
-            progress = int((completed_nodes / total_nodes) * 100)
+        completed = stages.filter(status='completed').count()
         
         return {
-            'total_nodes': total_nodes,
-            'completed_nodes': completed_nodes,
-            'progress': progress,
-            'current_node': task.current_stage.name if task.current_stage else None,
-            'flow_status': task.flow_instance.status if task.flow_instance else None
+            'total': total,
+            'completed': completed,
+            'progress': round(completed / total * 100, 1)
         }

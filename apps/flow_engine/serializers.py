@@ -3,6 +3,7 @@
 """
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from tasks.models import StageActivity, TaskStageInstance, Task, FlowTemplate, FlowNodeTemplate
 
 User = get_user_model()
 
@@ -13,7 +14,7 @@ class StageActivitySerializer(serializers.ModelSerializer):
     stage_name = serializers.CharField(source='stage_instance.template_node.name', read_only=True)
     
     class Meta:
-        model = None  # Will be set dynamically
+        model = StageActivity
         fields = [
             'id', 'stage_instance', 'stage_name', 'operator', 'operator_name',
             'action_type', 'content', 'attachments', 'ip_address', 'created_at'
@@ -28,7 +29,8 @@ class TaskFlowInstanceSerializer(serializers.ModelSerializer):
     initiator_name = serializers.CharField(source='initiator.username', read_only=True, allow_null=True)
     
     class Meta:
-        model = None  # Will be set dynamically
+        from apps.flow_engine.models import TaskFlowInstance
+        model = TaskFlowInstance
         fields = [
             'id', 'task', 'task_name', 'template', 'template_name', 'status',
             'initiator', 'initiator_name', 'current_node', 'current_node_name',
@@ -59,11 +61,9 @@ class TransferFlowSerializer(serializers.Serializer):
 
 class FlowProgressSerializer(serializers.Serializer):
     """流程进度序列化器"""
-    total_nodes = serializers.IntegerField()
-    completed_nodes = serializers.IntegerField()
-    progress = serializers.IntegerField()
-    current_node = serializers.CharField(allow_null=True)
-    flow_status = serializers.CharField(allow_null=True)
+    total = serializers.IntegerField()
+    completed = serializers.IntegerField()
+    progress = serializers.FloatField()
 
 
 class FlowNodeTemplateSerializer(serializers.Serializer):

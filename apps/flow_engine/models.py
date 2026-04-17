@@ -2,50 +2,8 @@ from django.db import models
 from django.conf import settings
 
 
-class StageActivity(models.Model):
-    """节点活动记录"""
-    ACTION_CHOICES = [
-        ('create', '创建'),
-        ('start', '开始处理'),
-        ('complete', '完成'),
-        ('upload', '上传文件'),
-        ('signoff', '签收'),
-        ('approve', '审批通过'),
-        ('reject', '驳回'),
-        ('comment', '评论'),
-        ('transfer', '转交'),
-        ('system', '系统操作'),
-    ]
-    
-    stage_instance = models.ForeignKey(
-        'TaskStageInstance',
-        on_delete=models.CASCADE,
-        related_name='activities'
-    )
-    operator = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='stage_activities'
-    )
-    action_type = models.CharField(max_length=20, choices=ACTION_CHOICES)
-    content = models.TextField(blank=True, verbose_name='活动内容')
-    attachments = models.JSONField(default=list, blank=True, verbose_name='附件')
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = 'flow_engine_stageactivity'
-        verbose_name = '节点活动记录'
-        verbose_name_plural = '节点活动记录'
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.stage_instance} - {self.action_type}"
-
-
 class TaskFlowInstance(models.Model):
-    """流程实例"""
+    """流程实例 - 统一管理任务流程"""
     STATUS_CHOICES = [
         ('draft', '草稿'),
         ('active', '进行中'),

@@ -393,9 +393,15 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="expense-tab" data-bs-toggle="tab" data-bs-target="#expense" type="button" role="tab">支出</button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="salary-tab" data-bs-toggle="tab" data-bs-target="#salary" type="button" role="tab">工资</button>
+                </li>
             </ul>
             <button class="btn btn-primary btn-sm" onclick="showFinanceModal()">
                 <i class="bi bi-plus-lg me-1"></i>新建记录
+            </button>
+            <button class="btn btn-success btn-sm" onclick="showSalaryModal()">
+                <i class="bi bi-cash-stack me-1"></i>新建工资单
             </button>
         </div>
     </div>
@@ -426,6 +432,65 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <!-- Salary Tab Panel -->
+    <div class="tab-pane fade" id="salary" role="tabpanel">
+        <div class="p-3">
+            <div class="row g-2 mb-3 align-items-end">
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label small mb-1">公司</label>
+                    <select class="form-select form-select-sm" id="salaryCompanyFilter" onchange="loadSalaryList()">
+                        <option value="">全部公司</option>
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small mb-1">月份</label>
+                    <input type="month" class="form-control form-control-sm" id="salaryMonthFilter" onchange="loadSalaryList()">
+                </div>
+                <div class="col-md-auto col-sm-12">
+                    <button class="btn btn-success btn-sm" onclick="showSalaryModal()">
+                        <i class="bi bi-plus-lg me-1"></i>新建工资单
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="exportSalary()">
+                        <i class="bi bi-download me-1"></i>导出Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>公司</th>
+                        <th>员工姓名</th>
+                        <th>工号</th>
+                        <th>职位</th>
+                        <th>月份</th>
+                        <th>基本工资</th>
+                        <th>加班工资</th>
+                        <th>奖金</th>
+                        <th>社保扣款</th>
+                        <th>公积金扣款</th>
+                        <th>员工借款</th>
+                        <th>其他扣款</th>
+                        <th>其他加款</th>
+                        <th>个税</th>
+                        <th>实发工资</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="salaryTableBody">
+                    <tr>
+                        <td colspan="17" class="table-empty-state">
+                            <i class="bi bi-hourglass-split table-empty-icon"></i>
+                            <p class="table-empty-text">加载中...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -481,6 +546,116 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                 <button type="button" class="btn btn-primary" onclick="saveFinance()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Salary Modal -->
+<div class="modal fade" id="salaryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="salaryModalTitle">新建工资单</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="salaryId">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">公司 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="salaryCompany" required>
+                            <option value="">选择公司</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">月份 <span class="text-danger">*</span></label>
+                        <input type="month" class="form-control" id="salaryMonth" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">员工姓名 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="salaryEmployeeName" required placeholder="如：张三">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">工号 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="salaryEmployeeNo" required placeholder="如：EMP001">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">职位</label>
+                        <input type="text" class="form-control" id="salaryPosition" placeholder="如：工程师">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">银行卡号 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="salaryBankAccount" required placeholder="银行卡号">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">状态</label>
+                        <select class="form-select" id="salaryStatus">
+                            <option value="draft">草稿</option>
+                            <option value="pending">待审核</option>
+                            <option value="approved">已批准</option>
+                            <option value="paid">已发放</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">基本工资</label>
+                        <input type="number" class="form-control" id="salaryBase" step="0.01" min="0" value="0" oninput="calcSalaryPreview()">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">加班工资</label>
+                        <input type="number" class="form-control" id="salaryOvertime" step="0.01" min="0" value="0" oninput="calcSalaryPreview()">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">奖金</label>
+                        <input type="number" class="form-control" id="salaryBonus" step="0.01" min="0" value="0" oninput="calcSalaryPreview()">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">社保扣款</label>
+                        <input type="number" class="form-control" id="salarySocial" step="0.01" min="0" value="0" oninput="calcSalaryPreview()">
+                        <div class="form-text"><a href="javascript:void(0)" onclick="applyShenzhenStandard()">应用深圳标准</a></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">公积金扣款</label>
+                        <input type="number" class="form-control" id="salaryHousing" step="0.01" min="0" value="0" oninput="calcSalaryPreview()">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">员工借款</label>
+                        <input type="number" class="form-control" id="salaryLoan" step="0.01" min="0" value="0" oninput="calcSalaryPreview()">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">其他扣款</label>
+                        <input type="number" class="form-control" id="salaryOtherDed" step="0.01" min="0" value="0" oninput="calcSalaryPreview()">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">其他加款</label>
+                        <input type="number" class="form-control" id="salaryOtherAdd" step="0.01" min="0" value="0" oninput="calcSalaryPreview()">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">备注</label>
+                        <input type="text" class="form-control" id="salaryRemark" placeholder="可选">
+                    </div>
+                    <div class="col-12">
+                        <hr>
+                        <div class="row text-center">
+                            <div class="col-md-4">
+                                <div class="small text-muted">个税（自动计算）</div>
+                                <div class="fw-bold text-danger" id="salaryTaxPreview">¥0.00</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="small text-muted">实发工资（自动计算）</div>
+                                <div class="fw-bold text-success fs-5" id="salaryNetPreview">¥0.00</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="small text-muted">应纳税所得额</div>
+                                <div class="fw-bold" id="salaryTaxablePreview">¥0.00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveSalary()">保存</button>
             </div>
         </div>
     </div>
@@ -752,6 +927,292 @@ function deleteFinance(id, type) {
     }).catch(function() { showToast('网络请求失败', 'error'); });
 }
 
+//
+// ============================================
+// SALARY TAB FUNCTIONS
+// ============================================
+
+var allSalaries = [];
+
+function loadSalaryList() {
+    var companyId = document.getElementById('salaryCompanyFilter').value;
+    var month = document.getElementById('salaryMonthFilter').value;
+    var url = '/api/v1/finance/salary/';
+    var params = [];
+    if (companyId) params.push('company_id=' + companyId);
+    if (month) params.push('month=' + month);
+    if (params.length) url += '?' + params.join('&');
+
+    Promise.all([
+        fetch(url, { headers: getAuthHeaders() })
+            .then(function(r) {
+                if (r.status === 401) { window.location.href = '/login/'; return []; }
+                if (r.status === 403) { showToast('无权限查看工资数据', 'error'); return []; }
+                if (!r.ok) return [];
+                return r.json().then(function(d) { return d.results || d || []; });
+            }).catch(function() { return []; }),
+        fetch('/api/v1/finance/companies/', { headers: getAuthHeaders() })
+            .then(function(r) {
+                if (!r.ok) return [];
+                return r.json().then(function(d) { return d.results || d || []; });
+            }).catch(function() { return []; })
+    ]).then(function(results) {
+        var salaries = results[0];
+        var companies = results[1];
+        allSalaries = salaries;
+
+        var filterSelect = document.getElementById('salaryCompanyFilter');
+        var modalSelect = document.getElementById('salaryCompany');
+        var currentFilterVal = filterSelect.value;
+        filterSelect.innerHTML = '<option value="">全部公司</option>';
+        modalSelect.innerHTML = '<option value="">选择公司</option>';
+        companies.forEach(function(c) {
+            var sel = currentFilterVal == c.id ? ' selected' : '';
+            filterSelect.innerHTML += '<option value="' + c.id + '"' + sel + '>' + escHtml(c.name) + '</option>';
+            modalSelect.innerHTML += '<option value="' + c.id + '">' + escHtml(c.name) + '</option>';
+        });
+
+        renderSalaryTable(salaries);
+    }).catch(function() {
+        document.getElementById('salaryTableBody').innerHTML =
+            '<tr><td colspan="17" class="table-empty-state">' +
+            '<i class="bi bi-exclamation-triangle table-empty-icon"></i>' +
+            '<p class="table-empty-text">工资数据加载失败</p></td></tr>';
+    });
+}
+
+function renderSalaryTable(salaries) {
+    var tbody = document.getElementById('salaryTableBody');
+    if (!salaries || !salaries.length) {
+        tbody.innerHTML = '<tr><td colspan="17" class="table-empty-state">' +
+            '<i class="bi bi-cash-stack table-empty-icon"></i>' +
+            '<p class="table-empty-text">暂无工资记录</p></td></tr>';
+        return;
+    }
+    var statusClass = { 'draft': 'bg-secondary', 'pending': 'bg-warning text-dark', 'approved': 'bg-primary', 'paid': 'bg-success' };
+    var html = '';
+    salaries.forEach(function(s) {
+        var sc = statusClass[s.status] || 'bg-secondary';
+        html += '<tr>' +
+            '<td>' + escHtml(s.company_name) + '</td>' +
+            '<td>' + escHtml(s.employee_name) + '</td>' +
+            '<td>' + escHtml(s.employee_no) + '</td>' +
+            '<td>' + escHtml(s.position) + '</td>' +
+            '<td>' + escHtml(s.month) + '</td>' +
+            '<td class="text-end">' + formatMoney(s.base_salary) + '</td>' +
+            '<td class="text-end">' + formatMoney(s.overtime_salary) + '</td>' +
+            '<td class="text-end">' + formatMoney(s.bonus) + '</td>' +
+            '<td class="text-end text-danger">-' + formatMoney(s.social_insurance) + '</td>' +
+            '<td class="text-end text-danger">-' + formatMoney(s.housing_fund) + '</td>' +
+            '<td class="text-end">' + formatMoney(s.employee_loan || 0) + '</td>' +
+            '<td class="text-end">' + formatMoney(s.other_deduction || 0) + '</td>' +
+            '<td class="text-end">' + formatMoney(s.other_addition || 0) + '</td>' +
+            '<td class="text-end text-danger">-' + formatMoney(s.individual_income_tax) + '</td>' +
+            '<td class="text-end text-success fw-bold">' + formatMoney(s.net_salary) + '</td>' +
+            '<td><span class="badge ' + sc + '">' + escHtml(s.status_display) + '</span></td>' +
+            '<td>' +
+            '<button class="btn btn-sm btn-outline-primary me-1" onclick="editSalary(' + s.id + ')"><i class="bi bi-pencil"></i></button>' +
+            '<button class="btn btn-sm btn-outline-danger" onclick="deleteSalary(' + s.id + ')"><i class="bi bi-trash"></i></button>' +
+            '</td></tr>';
+    });
+    tbody.innerHTML = html;
+}
+
+function showSalaryModal(id) {
+    document.getElementById('salaryId').value = id || '';
+    document.getElementById('salaryModalTitle').textContent = id ? '编辑工资单' : '新建工资单';
+    if (!id) {
+        document.getElementById('salaryEmployeeName').value = '';
+        document.getElementById('salaryEmployeeNo').value = '';
+        document.getElementById('salaryPosition').value = '';
+        document.getElementById('salaryBankAccount').value = '';
+        document.getElementById('salaryMonth').value = new Date().toISOString().substring(0, 7);
+        document.getElementById('salaryBase').value = '0';
+        document.getElementById('salaryOvertime').value = '0';
+        document.getElementById('salaryBonus').value = '0';
+        document.getElementById('salarySocial').value = '0';
+        document.getElementById('salaryHousing').value = '0';
+        document.getElementById('salaryLoan').value = '0';
+        document.getElementById('salaryOtherDed').value = '0';
+        document.getElementById('salaryOtherAdd').value = '0';
+        document.getElementById('salaryRemark').value = '';
+        document.getElementById('salaryStatus').value = 'draft';
+        var sel = document.getElementById('salaryCompany');
+        var filterSel = document.getElementById('salaryCompanyFilter');
+        if (filterSel && filterSel.value) {
+            sel.value = filterSel.value;
+        } else {
+            sel.value = '';
+        }
+    }
+    calcSalaryPreview();
+    var modal = new bootstrap.Modal(document.getElementById('salaryModal'));
+    modal.show();
+}
+
+function editSalary(id) {
+    var s = allSalaries.find(function(x) { return x.id === id; });
+    if (!s) { showToast('记录不存在', 'error'); return; }
+    document.getElementById('salaryId').value = id;
+    document.getElementById('salaryModalTitle').textContent = '编辑工资单';
+
+    var companySel = document.getElementById('salaryCompany');
+    for (var i = 0; i < companySel.options.length; i++) {
+        if (companySel.options[i].value == s.company) {
+            companySel.selectedIndex = i;
+            break;
+        }
+    }
+
+    document.getElementById('salaryMonth').value = s.month || '';
+    document.getElementById('salaryEmployeeName').value = s.employee_name || '';
+    document.getElementById('salaryEmployeeNo').value = s.employee_no || '';
+    document.getElementById('salaryPosition').value = s.position || '';
+    document.getElementById('salaryBankAccount').value = s.bank_account || '';
+    document.getElementById('salaryBase').value = s.base_salary || '0';
+    document.getElementById('salaryOvertime').value = s.overtime_salary || '0';
+    document.getElementById('salaryBonus').value = s.bonus || '0';
+    document.getElementById('salarySocial').value = s.social_insurance || '0';
+    document.getElementById('salaryHousing').value = s.housing_fund || '0';
+    document.getElementById('salaryLoan').value = s.employee_loan || '0';
+    document.getElementById('salaryOtherDed').value = s.other_deduction || '0';
+    document.getElementById('salaryOtherAdd').value = s.other_addition || '0';
+    document.getElementById('salaryRemark').value = s.remark || '';
+    document.getElementById('salaryStatus').value = s.status || 'draft';
+    calcSalaryPreview();
+    var modal = new bootstrap.Modal(document.getElementById('salaryModal'));
+    modal.show();
+}
+
+function calcSalaryPreview() {
+    var base = parseFloat(document.getElementById('salaryBase').value) || 0;
+    var overtime = parseFloat(document.getElementById('salaryOvertime').value) || 0;
+    var bonus = parseFloat(document.getElementById('salaryBonus').value) || 0;
+    var social = parseFloat(document.getElementById('salarySocial').value) || 0;
+    var housing = parseFloat(document.getElementById('salaryHousing').value) || 0;
+    var loan = parseFloat(document.getElementById('salaryLoan').value) || 0;
+    var otherDed = parseFloat(document.getElementById('salaryOtherDed').value) || 0;
+    var otherAdd = parseFloat(document.getElementById('salaryOtherAdd').value) || 0;
+
+    var taxable = base + overtime + bonus + otherAdd - social - housing - 5000;
+    document.getElementById('salaryTaxablePreview').textContent = '¥' + formatMoney(Math.max(0, taxable));
+
+    var tax = 0;
+    if (taxable > 0) {
+        var thresholds = [0, 3000, 12000, 25000, 35000, 55000, 80000];
+        var rates = [3, 10, 20, 25, 30, 35, 45];
+        var quickDed = [0, 210, 1410, 2660, 4410, 7160, 15160];
+        for (var i = thresholds.length - 1; i >= 0; i--) {
+            if (taxable > thresholds[i]) {
+                tax = taxable * rates[i] / 100 - quickDed[i];
+                break;
+            }
+        }
+    }
+    var net = base + overtime + bonus + otherAdd - social - housing - tax - loan - otherDed;
+    document.getElementById('salaryTaxPreview').textContent = '¥' + formatMoney(tax);
+    document.getElementById('salaryNetPreview').textContent = '¥' + formatMoney(net);
+}
+
+function applyShenzhenStandard() {
+    var base = parseFloat(document.getElementById('salaryBase').value) || 5000;
+    var social = Math.round(base * 0.105 * 100) / 100;
+    var housing = Math.round(base * 0.12 * 100) / 100;
+    document.getElementById('salarySocial').value = social.toFixed(2);
+    document.getElementById('salaryHousing').value = housing.toFixed(2);
+    calcSalaryPreview();
+    showToast('已应用深圳标准（示例），请核对', 'info');
+}
+
+function saveSalary() {
+    var id = document.getElementById('salaryId').value;
+    var companyId = document.getElementById('salaryCompany').value;
+    var month = document.getElementById('salaryMonth').value;
+    var employeeName = document.getElementById('salaryEmployeeName').value.trim();
+    var employeeNo = document.getElementById('salaryEmployeeNo').value.trim();
+    var position = document.getElementById('salaryPosition').value.trim();
+    var bankAccount = document.getElementById('salaryBankAccount').value.trim();
+
+    if (!companyId) { showToast('请选择公司', 'error'); return; }
+    if (!month) { showToast('请选择月份', 'error'); return; }
+    if (!employeeName) { showToast('请输入员工姓名', 'error'); return; }
+    if (!employeeNo) { showToast('请输入工号', 'error'); return; }
+    if (!bankAccount) { showToast('请输入银行卡号', 'error'); return; }
+
+    var payload = {
+        company: parseInt(companyId),
+        month: month,
+        employee_name: employeeName,
+        employee_no: employeeNo,
+        position: position,
+        bank_account: bankAccount,
+        base_salary: parseFloat(document.getElementById('salaryBase').value) || 0,
+        overtime_salary: parseFloat(document.getElementById('salaryOvertime').value) || 0,
+        bonus: parseFloat(document.getElementById('salaryBonus').value) || 0,
+        social_insurance: parseFloat(document.getElementById('salarySocial').value) || 0,
+        housing_fund: parseFloat(document.getElementById('salaryHousing').value) || 0,
+        employee_loan: parseFloat(document.getElementById('salaryLoan').value) || 0,
+        other_deduction: parseFloat(document.getElementById('salaryOtherDed').value) || 0,
+        other_addition: parseFloat(document.getElementById('salaryOtherAdd').value) || 0,
+        status: document.getElementById('salaryStatus').value,
+        remark: document.getElementById('salaryRemark').value.trim()
+    };
+
+    var apiUrl = '/api/v1/finance/salary/';
+    var method = 'POST';
+    if (id) {
+        apiUrl += id + '/';
+        method = 'PUT';
+    }
+
+    fetch(apiUrl, {
+        method: method,
+        headers: Object.assign({ 'Content-Type': 'application/json' }, getAuthHeaders()),
+        body: JSON.stringify(payload)
+    }).then(function(r) {
+        if (r.status === 401) { window.location.href = '/login/'; return; }
+        if (r.status === 403) { showToast('无权限执行此操作', 'error'); return; }
+        if (!r.ok) {
+            r.json().then(function(d) {
+                showToast((d.detail || d.message || JSON.stringify(d) || '保存失败'), 'error');
+            }).catch(function() { showToast('保存失败', 'error'); });
+            return;
+        }
+        return r.json();
+    }).then(function() {
+        showToast(id ? '更新成功' : '创建成功', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('salaryModal')).hide();
+        loadSalaryList();
+    }).catch(function() { showToast('网络请求失败', 'error'); });
+}
+
+function deleteSalary(id) {
+    if (!confirm('确定要删除这条工资记录吗？')) return;
+    fetch('/api/v1/finance/salary/' + id + '/', {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+    }).then(function(r) {
+        if (r.status === 401) { window.location.href = '/login/'; return; }
+        if (r.status === 403) { showToast('无权限删除', 'error'); return; }
+        if (r.status === 204 || r.ok) {
+            showToast('删除成功', 'success');
+            loadSalaryList();
+        } else {
+            showToast('删除失败', 'error');
+        }
+    }).catch(function() { showToast('网络请求失败', 'error'); });
+}
+
+function exportSalary() {
+    var companyId = document.getElementById('salaryCompanyFilter').value;
+    var month = document.getElementById('salaryMonthFilter').value;
+    if (!companyId) { showToast('请先选择要导出的公司', 'error'); return; }
+    var url = '/api/v1/finance/salary/export/?company_id=' + companyId;
+    if (month) url += '&month=' + month;
+    showToast('正在导出...', 'info');
+    window.open(url, '_blank');
+}
+
 // Tab filtering
 document.addEventListener('DOMContentLoaded', function() {
     if (!checkAuth()) return;
@@ -763,6 +1224,8 @@ document.addEventListener('DOMContentLoaded', function() {
             renderFinanceTable(allRecords.filter(function(r) { return r._type === 'income'; }));
         } else if (tabId === 'expense-tab') {
             renderFinanceTable(allRecords.filter(function(r) { return r._type === 'expense'; }));
+        } else if (tabId === 'salary-tab') {
+            loadSalaryList();
         } else {
             renderFinanceTable(allRecords);
         }
