@@ -240,8 +240,117 @@ class Company(models.Model):
         return self.name
 
 
+class WageRecord(models.Model):
+    """工资单记录 - GREEN版本"""
+
+    STATUS_CHOICES = [
+        ('draft', '草稿'),
+        ('pending', '待审核'),
+        ('approved', '已批准'),
+        ('paid', '已发放'),
+    ]
+
+    company = models.ForeignKey(
+        Company,
+        verbose_name='公司',
+        on_delete=models.CASCADE,
+        related_name='wage_records'
+    )
+    employee_name = models.CharField(verbose_name='员工姓名', max_length=50)
+    bank_card = models.CharField(verbose_name='银行卡号', max_length=30, blank=True, default='')
+    base_salary = models.DecimalField(verbose_name='基本工资', max_digits=12, decimal_places=2, default=0)
+    overtime_pay = models.DecimalField(verbose_name='加班费', max_digits=12, decimal_places=2, default=0)
+    bonus = models.DecimalField(verbose_name='奖金', max_digits=12, decimal_places=2, default=0)
+    social_insurance = models.DecimalField(verbose_name='社保', max_digits=12, decimal_places=2, default=0)
+    housing_fund = models.DecimalField(verbose_name='公积金', max_digits=12, decimal_places=2, default=0)
+    leave_deduction = models.DecimalField(verbose_name='请假扣款', max_digits=12, decimal_places=2, default=0)
+    other_deductions = models.DecimalField(verbose_name='其他扣款', max_digits=12, decimal_places=2, default=0)
+    gross_salary = models.DecimalField(verbose_name='个税前工资', max_digits=12, decimal_places=2, default=0, editable=False)
+    tax = models.DecimalField(verbose_name='个税', max_digits=12, decimal_places=2, default=0, editable=False)
+    net_salary = models.DecimalField(verbose_name='实发工资', max_digits=12, decimal_places=2, default=0, editable=False)
+    year = models.IntegerField(verbose_name='年份')
+    month = models.IntegerField(verbose_name='月份', choices=[(i, f'{i}月') for i in range(1, 13)])
+    department = models.CharField(verbose_name='部门', max_length=50, blank=True, default='')
+    position = models.CharField(verbose_name='职位', max_length=50, blank=True, default='')
+    status = models.CharField(verbose_name='状态', max_length=20, choices=STATUS_CHOICES, default='draft')
+    approver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name='审批人',
+        on_delete=models.SET_NULL,
+        related_name='approved_wage_records',
+        blank=True,
+        null=True
+    )
+    approved_at = models.DateTimeField(verbose_name='审批时间', blank=True, null=True)
+    paid_at = models.DateTimeField(verbose_name='支付时间', blank=True, null=True)
+    remarks = models.TextField(verbose_name='备注', blank=True, default='')
+    created_at = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField(verbose_name='更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'finance_wage_records'
+        verbose_name = '工资单'
+        verbose_name_plural = '工资管理'
+        ordering = ['-year', '-month', 'company__name', 'employee_name']
+        unique_together = ['company', 'employee_name', 'year', 'month']
+
+    def __str__(self):
+        return f"{self.employee_name} - {self.year}-{self.month:02d}"
+
+    def calculate_gross_and_tax(self):
+        """计算个税前工资、个税和实发工资（7级超额累进税率）"""
+        # 应发合计 = 基本工资 + 加班费 + 奖金
+        gross = float(self.base_salary) + float(self.overtime_pay or 0) + float(self.bonus or 0)
+
+        # 专项扣除 = 社保 + 公积金
+        special_deduction = float(self.social_insurance or 0) + float(self.housing_fund or 0)
+
+        # 应纳税所得额 = 应发合计 - 专项扣除 - 5000（个税起征点）
+        taxable_income = gross - special_deduction - 5000
+
+        if taxable_income <= 0:
+            self.tax = 0
+        else:
+            # 中国7级超额累进税率（月度）
+            # 级数    月应纳税所得额          税率    速算扣除数
+            # 1       不超过3000元           3%      0
+            # 2       3000-12000元(含)        10%     210
+            # 3       12000-25000元(含)       20%     1410
+            # 4       25000-35000元(含)       25%     2660
+            # 5       35000-55000元(含)       30%     4410
+            # 6       55000-80000元(含)       35%     7160
+            # 7       超过80000元             45%     15160
+            thresholds = [0, 3000, 12000, 25000, 35000, 55000, 80000]
+            rates = [3, 10, 20, 25, 30, 35, 45]
+            quick_deductions = [0, 210, 1410, 2660, 4410, 7160, 15160]
+
+            tax = 0
+            # 找到适用的税率等级（从低到高遍历）
+            for i in range(len(thresholds) - 1):
+                if taxable_income <= thresholds[i + 1]:
+                    tax = taxable_income * rates[i] / 100 - quick_deductions[i]
+                    break
+            else:
+                # 超过最高档
+                tax = taxable_income * 45 / 100 - 15160
+            self.tax = round(max(tax, 0), 2)
+
+        self.gross_salary = round(gross, 2)
+
+        # 实发工资 = 应发合计 - 社保 - 公积金 - 请假扣款 - 其他扣款 - 个税
+        self.net_salary = round(
+            gross - special_deduction - float(self.leave_deduction or 0) - float(self.other_deductions or 0) - float(self.tax or 0),
+            2
+        )
+
+    def save(self, *args, **kwargs):
+        self.calculate_gross_and_tax()
+        super(WageRecord, self).save(*args, **kwargs)
+
+
+# 保留原有的Salary模型作为兼容
 class Salary(models.Model):
-    """工资单模型 - GREEN版本"""
+    """工资单模型（兼容旧版本）"""
 
     STATUS_CHOICES = [
         ('draft', '草稿'),
@@ -290,17 +399,16 @@ class Salary(models.Model):
 
     class Meta:
         db_table = 'finance_salaries'
-        verbose_name = '工资单'
-        verbose_name_plural = '工资管理'
+        verbose_name = '工资单（旧）'
+        verbose_name_plural = '工资管理（旧）'
         ordering = ['-salary_month', 'company__name', 'employee_id']
         unique_together = ['employee_id', 'salary_month']
 
     def __str__(self):
-        return "%s - %s" % (self.employee_name, self.month)
+        return f"{self.employee_id} - {self.salary_month}"
 
     def calculate_tax_and_net(self):
-        """计算个税和实发工资"""
-        # 应纳税所得额 = 基本工资 + 加班费 + 奖金 - 社保 - 公积金 - 5000
+        """计算个税和实发工资（7级超额累进税率）"""
         gross = float(self.base_salary) + float(self.overtime_pay or 0) + float(self.bonus or 0)
         deductions = float(self.social_security or 0) + float(self.housing_fund or 0)
         taxable_income = gross - deductions - 5000
@@ -308,14 +416,17 @@ class Salary(models.Model):
         if taxable_income <= 0:
             self.tax = 0
         else:
-            # 中国7级超额累进税率表
+            # 中国7级超额累进税率（月度）
             thresholds = [0, 3000, 12000, 25000, 35000, 55000, 80000]
             rates = [3, 10, 20, 25, 30, 35, 45]
-            deductions_tbl = [0, 210, 1410, 2660, 4410, 7160, 15160]
+            quick_deductions = [0, 210, 1410, 2660, 4410, 7160, 15160]
+
+            tax = 0
             for i in range(len(thresholds) - 1, -1, -1):
                 if taxable_income > thresholds[i]:
-                    self.tax = round(taxable_income * rates[i] / 100 - deductions_tbl[i], 2)
+                    tax = taxable_income * rates[i] / 100 - quick_deductions[i]
                     break
+            self.tax = round(max(tax, 0), 2)
 
         other_ded = float(self.deduction_other or 0)
         self.net_salary = round(
