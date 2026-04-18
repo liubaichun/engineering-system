@@ -53,9 +53,38 @@ class Supplier(models.Model):
         return self.name
 
 
-# Keep existing models for backward compatibility with other parts of the system
+# =============================================================================
+# CRM模型清理 - GREEN版本
+# 
+# 清理说明：
+# - Customer/Supplier: 保留并作为主要模型，被Project等模块使用
+# - Client/Contract: 已废弃(deprecated)，请勿在新代码中使用，仅为兼容旧数据保留
+#   将迁移到使用Customer/Supplier作为主模型
+# =============================================================================
+
+import warnings
+
+
+def _client_deprecated_warning():
+    """Client模型废弃警告"""
+    warnings.warn(
+        "Client模型已废弃，请使用Customer模型代替。",
+        DeprecationWarning,
+        stacklevel=3
+    )
+
+
+def _contract_deprecated_warning():
+    """Contract模型废弃警告"""
+    warnings.warn(
+        "Contract模型已废弃，合同功能将迁移到Finance模块。",
+        DeprecationWarning,
+        stacklevel=3
+    )
+
+
 class Client(models.Model):
-    """客户模型（兼容）"""
+    """客户模型（兼容）- 已废弃，请使用Customer模型"""
     
     STATUS_CHOICES = [
         ('active', '活跃'),
@@ -75,15 +104,19 @@ class Client(models.Model):
     
     class Meta:
         db_table = 'clients'
-        verbose_name = '客户（兼容）'
-        verbose_name_plural = '客户管理（兼容）'
+        verbose_name = '客户（兼容-已废弃）'
+        verbose_name_plural = '客户管理（兼容-已废弃）'
     
     def __str__(self):
         return self.name
+    
+    def save(self, *args, **kwargs):
+        _client_deprecated_warning()
+        super().save(*args, **kwargs)
 
 
 class Contract(models.Model):
-    """合同模型"""
+    """合同模型 - 已废弃，合同功能将迁移到Finance模块"""
     
     TYPE_CHOICES = [
         ('sale', '销售合同'),
@@ -109,8 +142,12 @@ class Contract(models.Model):
     
     class Meta:
         db_table = 'contracts'
-        verbose_name = '合同'
-        verbose_name_plural = '合同管理'
+        verbose_name = '合同（已废弃）'
+        verbose_name_plural = '合同管理（已废弃）'
     
     def __str__(self):
         return f"{self.name} ({self.code})"
+    
+    def save(self, *args, **kwargs):
+        _contract_deprecated_warning()
+        super().save(*args, **kwargs)

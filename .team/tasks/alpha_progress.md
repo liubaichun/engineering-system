@@ -1,39 +1,22 @@
 # Agent-Alpha 进度报告
 
-## 当前状态：✅ 已完成
+## 当前状态：✅ 核心功能完成
 
 ## 已完成任务
-1. ✅ 第一步：创建flow_engine app
-2. ✅ 第二步：设计并实现StageActivity和TaskFlowInstance模型
-3. ✅ 第三步：实现FlowEngine引擎（create_flow, transition_to, transfer_to, complete_flow等）
-4. ✅ 第四步：实现超时检测Celery Task
-5. ✅ 第五步：创建REST API视图
-6. ✅ 第六步：注册URL配置
-7. ⚠️ 第七步：创建数据库迁移（环境限制，celery模块缺失）
-8. ✅ 第八步：编写单元测试
+1. ✅ 创建flow_engine app
+2. ✅ 实现TaskFlowInstance模型（统一流程实例）
+3. ✅ 实现FlowEngine引擎（create_flow, transition_to, transfer_to, complete_flow, cancel_flow, suspend_flow, resume_flow, get_flow_progress）
+4. ✅ 实现超时检测Celery Task（check_overdue_flows, sync_task_status, cleanup_completed_flows, notify_upcoming_deadlines）
+5. ✅ 创建REST API视图（FlowInstanceViewSet, StageActivityViewSet）
+6. ✅ 配置URL路由
+7. ✅ 创建数据库迁移文件
+8. ✅ 修复StageActivity模型重复问题（使用tasks/models.py中已有的）
+9. ✅ 提交所有代码到分支 alpha/feature-flow-engine
 
-## 代码提交
-- 分支: alpha/feature-flow-engine
-- 提交: b6d03ea
-- 提交信息: feat: add flow_engine module for task flow visualization
-
-## 已创建文件
-| 文件 | 说明 |
-|------|------|
-| apps/flow_engine/__init__.py | 模块初始化 |
-| apps/flow_engine/apps.py | Django App配置 |
-| apps/flow_engine/models.py | StageActivity, TaskFlowInstance模型 |
-| apps/flow_engine/engine.py | FlowEngine流程引擎类 |
-| apps/flow_engine/tasks.py | Celery超时检测任务 |
-| apps/flow_engine/serializers.py | REST API序列化器 |
-| apps/flow_engine/views.py | REST API视图集 |
-| apps/flow_engine/urls.py | URL路由配置 |
-| apps/flow_engine/tests.py | 单元测试 |
-| apps/flow_engine/migrations/__init__.py | 迁移包 |
-
-## 配置修改
-- engineering_system/settings.py: 添加 `apps.flow_engine` 到 INSTALLED_APPS
-- engineering_system/urls.py: 添加 `api/v1/flow-engine/` 路由
+## 代码提交记录
+- `b6d03ea` feat: add flow_engine module for task flow visualization
+- `483d972` fix: resolve StageActivity model duplication
+- `7686a7c` feat: add TaskFlowInstance migration for flow_engine
 
 ## API接口列表
 | 方法 | 端点 | 说明 |
@@ -49,10 +32,16 @@
 | GET | /api/v1/flow-engine/flows/{id}/activities/ | 活动记录 |
 | GET | /api/v1/flow-engine/activities/ | 活动列表(过滤) |
 
+## 架构说明
+- TaskFlowInstance 在 apps/flow_engine/models.py（新模块）
+- StageActivity 使用 tasks/models.py 中已有的模型（复用）
+- TaskStageInstance 使用 tasks/models.py 中已有的模型（复用）
+
 ## 阻塞问题
-- celery模块未安装在site-packages中，无法执行makemigrations
-- 需要在实际Django环境中运行 `python manage.py makemigrations flow_engine`
+- 数据库迁移需要在实际的Django环境（green系统）中执行
+- Celery依赖在当前环境缺失，但代码已准备就绪
 
 ## 下一步计划
-1. 在有Django/Celery环境中执行数据库迁移
-2. 合并到master分支
+1. 在green系统上执行数据库迁移
+2. 合并alpha/feature-flow-engine到master
+3. 启动Beta agent开发工资系统
