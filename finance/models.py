@@ -325,10 +325,14 @@ class WageRecord(models.Model):
             quick_deductions = [0, 210, 1410, 2660, 4410, 7160, 15160]
 
             tax = 0
-            for i in range(len(thresholds) - 1, -1, -1):
-                if taxable_income > thresholds[i]:
+            # 找到适用的税率等级（从低到高遍历）
+            for i in range(len(thresholds) - 1):
+                if taxable_income <= thresholds[i + 1]:
                     tax = taxable_income * rates[i] / 100 - quick_deductions[i]
                     break
+            else:
+                # 超过最高档
+                tax = taxable_income * 45 / 100 - 15160
             self.tax = round(max(tax, 0), 2)
 
         self.gross_salary = round(gross, 2)
