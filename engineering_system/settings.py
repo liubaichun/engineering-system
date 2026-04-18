@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'operation_logs',
     'apps.workers',
     'apps.gps_attendance',
+    'apps.flow_engine',
 ]
 
 MIDDLEWARE = [

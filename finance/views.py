@@ -1,9 +1,13 @@
+from rest_framework.decorators import action
+from django.http import HttpResponse
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from .models import Income, Expense, InvoiceNew, FinancialRecord, Invoice
+from rest_framework.response import Response
+from .models import Income, Expense, InvoiceNew, FinancialRecord, Invoice, Company, Salary
 from .serializers import (
     IncomeSerializer, ExpenseSerializer,
-    InvoiceNewSerializer, FinancialRecordSerializer, InvoiceSerializer
+    InvoiceNewSerializer, FinancialRecordSerializer, InvoiceSerializer,
+    CompanySerializer, SalarySerializer
 )
 from .permissions import IsFinanceOnly
 from operation_logs.models import OperationLog
@@ -54,13 +58,14 @@ class IncomeViewSet(viewsets.ModelViewSet):
         )
 
     def perform_destroy(self, instance):
+        income_id = instance.id
         amount = instance.amount
         instance.delete()
         OperationLog.objects.create(
             user=self.request.user,
             action='delete',
             model_name='Income',
-            object_id=instance.id,
+            object_id=income_id,
             description=f"删除了收入记录：金额 {amount}",
             ip_address=self.get_client_ip()
         )
@@ -141,5 +146,257 @@ class FinancialRecordViewSet(viewsets.ModelViewSet):
 class InvoiceViewSet(viewsets.ModelViewSet):
     """发票视图集（兼容）"""
     queryset = Invoice.objects.all()
-    serializer_class = InvoiceSerializer
+    serializer_class = InvoiceSerializer,
+    CompanySerializer, SalarySerializer
     permission_classes = [IsAuthenticated, IsFinanceOnly]
+
+
+class CompanyViewSet(viewsets.ModelViewSet):
+    """公司视图集"""
+    queryset = Company.objects.all()
+    serializer_class = CompanySerializer
+    permission_classes = [IsAuthenticated, IsFinanceOnly]
+
+    def destroy(self, request, *args, **kwargs):
+        """重写destroy方法，处理ProtectedError"""
+        from django.db.models import ProtectedError
+        instance = self.get_object()
+        try:
+            self.perform_destroy(instance)
+            return Response(status=204)
+        except ProtectedError:
+            # 获取关联的模型信息
+            related_models = []
+            for rel in instance._meta.related_objects:
+                if rel.related_model:
+                    related_models.append(rel.related_model._meta.verbose_name)
+            return Response(
+                {'error': f'无法删除该公司，存在关联的{related_models}记录，请先删除关联记录'},
+                status=400
+            )
+
+
+class SalaryViewSet(viewsets.ModelViewSet):
+    """工资单视图集"""
+    queryset = Salary.objects.select_related('company', 'approver').all()
+    serializer_class = SalarySerializer
+    permission_classes = [IsAuthenticated, IsFinanceOnly]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        company_id = self.request.query_params.get('company_id')
+        month = self.request.query_params.get('month')
+        if company_id:
+            queryset = queryset.filter(company_id=company_id)
+        if month:
+            queryset = queryset.filter(salary_month=month)
+        return queryset
+
+    def get_client_ip(self):
+        x_forwarded_for = self.request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0].strip()
+        else:
+            ip = self.request.META.get('REMOTE_ADDR')
+        return ip
+
+    def perform_create(self, serializer):
+        obj = serializer.save()
+        OperationLog.objects.create(
+            user=self.request.user,
+            action='create',
+            model_name='Salary',
+            object_id=obj.id,
+            description=f"创建了工资单：{obj.employee_id} {obj.salary_month}",
+            ip_address=self.get_client_ip()
+        )
+
+    def perform_update(self, serializer):
+        obj = serializer.save()
+        OperationLog.objects.create(
+            user=self.request.user,
+            action='update',
+            model_name='Salary',
+            object_id=obj.id,
+            description=f"更新了工资单：{obj.employee_id} {obj.salary_month}",
+            ip_address=self.get_client_ip()
+        )
+
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        导出工资单Excel
+        company_id = request.query_params.get('company_id')
+        month = request.query_params.get('month')
+
+        if not company_id:
+            return Response({'error': '缺少 company_id 参数'}, status=400)
+
+        queryset = Salary.objects.select_related('company').filter(company_id=company_id)
+        if month:
+            queryset = queryset.filter(month=month)
+
+        if not queryset.exists():
+            return Response({'error': '没有找到工资单数据'}, status=404)
+
+        company_name = queryset.first().company.name
+
+        from io import BytesIO
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = f'{month or "全部"}工资单'
+
+        headers = [
+            '序号', '员工姓名', '工号', '职位', '银行卡号', '月份',
+            '基本工资', '加班工资', '奖金', '社保扣款', '公积金扣款',
+            '员工借款', '其他扣款', '其他加款', '个税', '实发工资', '状态', '备注'
+        ]
+        header_fill = PatternFill(start_color='1a1a2e', end_color='1a1a2e', fill_type='solid')
+        header_font = Font(color='FFFFFF', bold=True)
+        thin_border = Border(
+            left=Side(style='thin'), right=Side(style='thin'),
+            top=Side(style='thin'), bottom=Side(style='thin')
+        )
+
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=h)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = thin_border
+
+        status_map = dict(Salary.STATUS_CHOICES)
+        for row_idx, salary in enumerate(queryset, 2):
+            row_data = [
+                row_idx - 1,
+                salary.employee_name,
+                salary.employee_no,
+                salary.position,
+                salary.bank_account,
+                salary.month,
+                float(salary.base_salary),
+                float(salary.overtime_salary),
+                float(salary.bonus),
+                float(salary.social_insurance),
+                float(salary.housing_fund),
+                float(salary.employee_loan or 0),
+                float(salary.other_deduction or 0),
+                float(salary.other_addition or 0),
+                float(salary.individual_income_tax),
+                float(salary.net_salary),
+                status_map.get(salary.status, salary.status),
+                salary.remark or '',
+            ]
+            for col, val in enumerate(row_data, 1):
+                cell = ws.cell(row=row_idx, column=col, value=val)
+                cell.border = thin_border
+                if col >= 7:  # 数值列右对齐
+                    cell.alignment = Alignment(horizontal='right')
+                else:
+                    cell.alignment = Alignment(horizontal='center')
+
+        # 设置金额列格式
+        money_cols = range(7, 16)
+        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=7, max_col=15):
+            for cell in row:
+                cell.number_format = '#,##0.00'
+
+        # 自动列宽
+        for col in ws.columns:
+            max_len = 0
+            for cell in col:
+                if cell.value:
+                    max_len = max(max_len, len(str(cell.value)))
+            ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 25)
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        filename = f'{company_name}_{month or "全部"}_工资单.xlsx'
+        response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename*=UTF-8\'\'{filename}'
+        return response
+
+
+class MonthlyReportViewSet(viewsets.ViewSet):
+    """月度报表视图集"""
+    permission_classes = [IsAuthenticated, IsFinanceOnly]
+
+    def list(self, request):
+        """获取月度报表数据"""
+        from django.db.models import Sum, Count
+        from django.db.models.functions import TruncMonth
+        from finance.models import Income, Expense
+
+        year = request.query_params.get('year')
+        if not year:
+            from datetime import datetime
+            year = str(datetime.now().year)
+
+        # 收入汇总（按月）
+        income_by_month = Income.objects.filter(
+            date__startswith=year
+        ).annotate(
+            month=TruncMonth('date')
+        ).values('month').annotate(
+            total_amount=Sum('amount'),
+            count=Count('id')
+        ).order_by('month')
+
+        # 支出汇总（按月）
+        expense_by_month = Expense.objects.filter(
+            date__startswith=year
+        ).annotate(
+            month=TruncMonth('date')
+        ).values('month').annotate(
+            total_amount=Sum('amount'),
+            count=Count('id')
+        ).order_by('month')
+
+        # 构建月度数据
+        months_data = {}
+        for i in range(1, 13):
+            month_key = f"{year}-{i:02d}"
+            months_data[month_key] = {
+                'month': month_key,
+                'income': 0,
+                'income_count': 0,
+                'expense': 0,
+                'expense_count': 0,
+                'balance': 0
+            }
+
+        for item in income_by_month:
+            month_key = item['month'].strftime('%Y-%m') if item['month'] else None
+            if month_key and month_key in months_data:
+                months_data[month_key]['income'] = float(item['total_amount'] or 0)
+                months_data[month_key]['income_count'] = item['count']
+
+        for item in expense_by_month:
+            month_key = item['month'].strftime('%Y-%m') if item['month'] else None
+            if month_key and month_key in months_data:
+                months_data[month_key]['expense'] = float(item['total_amount'] or 0)
+                months_data[month_key]['expense_count'] = item['count']
+
+        # 计算月度结余
+        result = []
+        cumulative_balance = 0
+        for month_key in sorted(months_data.keys()):
+            data = months_data[month_key]
+            data['balance'] = data['income'] - data['expense']
+            cumulative_balance += data['balance']
+            data['cumulative_balance'] = cumulative_balance
+            result.append(data)
+
+        return Response({
+            'year': year,
+            'monthly_data': result,
+            'summary': {
+                'total_income': sum(m['income'] for m in result),
+                'total_expense': sum(m['expense'] for m in result),
+                'total_balance': sum(m['balance'] for m in result)
+            }
+        })

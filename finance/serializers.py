@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Income, Expense, InvoiceNew, FinancialRecord, Invoice
+from .models import Income, Expense, InvoiceNew, FinancialRecord, Invoice, Company, Salary
 from datetime import date as date_class
 
 
@@ -160,3 +160,33 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'invoice_date', 'amount', 'verified_at', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at']
+
+
+class CompanySerializer(serializers.ModelSerializer):
+    """公司序列化器 - GREEN版本"""
+    class Meta:
+        model = Company
+        fields = ['id', 'name', 'code', 'is_active', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class SalarySerializer(serializers.ModelSerializer):
+    """工资单序列化器 - GREEN版本"""
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    company_name = serializers.CharField(source='company.name', read_only=True)
+    approver_name = serializers.CharField(source='approver.username', read_only=True, allow_null=True)
+
+    class Meta:
+        model = Salary
+        fields = [
+            'id', 'company', 'company_name',
+            'employee_id', 'salary_month', 'department', 'position',
+            'base_salary', 'overtime_hours', 'overtime_rate', 'overtime_pay',
+            'attendance_days', 'leave_days', 'bonus',
+            'deduction_other', 'social_security', 'housing_fund',
+            'tax_before', 'tax', 'net_salary',
+            'status', 'status_display',
+            'approver', 'approver_name', 'approved_at', 'paid_at',
+            'remarks', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'net_salary', 'created_at', 'updated_at']

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公司管理 - 工程管理系统</title>
+    <link href="/static/local/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/local/css/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --sidebar-bg: #1a1a2e;
+            --sidebar-hover: #16213e;
+            --sidebar-text: #b8bcd4;
+            --sidebar-text-active: #ffffff;
+            --sidebar-width: 240px;
+            --page-bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --card-radius: 12px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--page-bg); }
+        nav.sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh; background: var(--sidebar-bg); z-index: 100; overflow-y: auto; }
+        .sidebar-brand { padding: 16px 20px; color: #fff; font-size: 1rem; font-weight: 700; border-bottom: 1px solid #2a2a4a; }
+        nav.sidebar .nav-link { color: var(--sidebar-text); padding: 10px 16px; border-radius: 8px; margin: 2px 8px; font-size: 0.9rem; display: flex; align-items: center; text-decoration: none; transition: all 0.2s; }
+        nav.sidebar .nav-link:hover { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        nav.sidebar .nav-link.active { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+        nav.sidebar .nav-link i { width: 20px; margin-right: 8px; }
+        .main-content { margin-left: var(--sidebar-width); padding: 24px; min-height: 100vh; }
+        .page-header { margin-bottom: 24px; }
+        .page-header h4 { font-weight: 700; color: var(--sidebar-bg); }
+        .card { background: var(--card-bg); border-radius: var(--card-radius); box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: none; margin-bottom: 20px; }
+        .card-header { background: transparent; border-bottom: 1px solid #f0f0f0; padding: 16px 20px; font-weight: 600; }
+        .stat-card { background: var(--card-bg); border-radius: var(--card-radius); padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .stat-value { font-size: 1.75rem; font-weight: 700; }
+        .stat-label { color: #6c757d; font-size: 0.875rem; margin-top: 4px; }
+        .table-empty-state { text-align: center; padding: 48px 0; color: #adb5bd; }
+        .table-empty-icon { font-size: 3rem; margin-bottom: 12px; display: block; }
+        .table-empty-text { font-size: 0.875rem; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .badge-income { background: #d1e7dd; color: #0f5132; }
+        .badge-expense { background: #f8d7da; color: #842029; }
+        .badge-draft { background: #e9ecef; color: #495057; }
+        .badge-pending { background: #fff3cd; color: #664d03; }
+        .badge-approved { background: #d1e7dd; color: #0f5132; }
+        .badge-paid { background: #cfe2ff; color: #084298; }
+        @media (max-width: 767px) { nav.sidebar { display: none; } .main-content { margin-left: 0; padding: 12px; } }
+    </style>
+</head>
+<body>
+<nav class="sidebar">
+    <div class="sidebar-brand">🏗️ 工程管理系统</div>
+    <ul class="nav flex-column mt-3">
+        <li class="nav-item"><a class="nav-link" href="/dashboard/"><i class="bi bi-speedometer2"></i>控制台</a></li>
+        <li class="nav-item"><a class="nav-link" href="/projects/"><i class="bi bi-folder"></i>项目管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="/tasks/"><i class="bi bi-kanban"></i>任务看板</a></li>
+        <li class="nav-item"><a class="nav-link active" href="/companies/"><i class="bi bi-building"></i>公司管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="/finance/"><i class="bi bi-currency-dollar"></i>财务管理</a></li>
+    </ul>
+</nav>
+
+<div class="main-content">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <h4>📋 公司管理</h4>
+        <button class="btn btn-primary btn-sm" onclick="showCompanyModal()"><i class="bi bi-plus-lg me-1"></i>新建公司</button>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4"><div class="stat-card"><div class="stat-value text-primary" id="totalCompanies">-</div><div class="stat-label">公司总数</div></div></div>
+        <div class="col-md-4"><div class="stat-card"><div class="stat-value text-success" id="totalInvoices">-</div><div class="stat-label">发票总数</div></div></div>
+        <div class="col-md-4"><div class="stat-card"><div class="stat-value text-info" id="monthBalance">-</div><div class="stat-label">年度收支差额</div></div></div>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item"><button class="nav-link active" id="companies-tab" data-bs-toggle="tab" data-bs-target="#companies-panel" type="button">公司列表</button></li>
+        <li class="nav-item"><button class="nav-link" id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices-panel" type="button">发票管理</button></li>
+        <li class="nav-item"><button class="nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports-panel" type="button">月度报表</button></li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="companies-panel">
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table mb-0">
+                            <thead><tr><th>ID</th><th>名称</th><th>代码</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+                            <tbody id="companiesTableBody"><tr><td colspan="6" class="table-empty-state"><i class="bi bi-hourglass-split table-empty-icon"></i><p class="table-empty-text">加载中...</p></td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="invoices-panel">
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>发票列表</span>
+                    <button class="btn btn-primary btn-sm" onclick="showInvoiceModal()"><i class="bi bi-plus-lg me-1"></i>新建发票</button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table mb-0">
+                            <thead><tr><th>发票号</th><th>类型</th><th>金额</th><th>状态</th><th>开票日期</th><th>操作</th></tr></thead>
+                            <tbody id="invoicesTableBody"><tr><td colspan="6" class="table-empty-state"><i class="bi bi-hourglass-split table-empty-icon"></i><p class="table-empty-text">加载中...</p></td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="reports-panel">
+            <div class="card">
+                <div class="card-header">月度收支报表 <span id="reportYear"></span></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead><tr><th>月份</th><th>收入</th><th>支出</th><th>差额</th><th>累计差额</th></tr></thead>
+                            <tbody id="reportTableBody"><tr><td colspan="5" class="table-empty-state">加载中...</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div class="row mt-4" id="reportSummary" style="display:none;">
+                        <div class="col-md-4"><div class="stat-card text-center"><div class="stat-value text-success" id="sumIncome">-</div><div class="stat-label">年度总收入</div></div></div>
+                        <div class="col-md-4"><div class="stat-card text-center"><div class="stat-value text-danger" id="sumExpense">-</div><div class="stat-label">年度总支出</div></div></div>
+                        <div class="col-md-4"><div class="stat-card text-center"><div class="stat-value text-primary" id="sumBalance">-</div><div class="stat-label">年度总差额</div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="companyModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title" id="companyModalTitle">新建公司</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <input type="hidden" id="companyId">
+            <div class="mb-3"><label class="form-label">公司名称</label><input type="text" class="form-control" id="companyName" required></div>
+            <div class="mb-3"><label class="form-label">公司代码</label><input type="text" class="form-control" id="companyCode"></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary" onclick="saveCompany()">保存</button></div>
+    </div></div>
+</div>
+
+<div class="modal fade" id="invoiceModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title" id="invoiceModalTitle">新建发票</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <input type="hidden" id="invoiceId">
+            <div class="mb-3"><label class="form-label">发票号</label><input type="text" class="form-control" id="invoiceNo" required></div>
+            <div class="mb-3"><label class="form-label">类型</label><select class="form-select" id="invoiceType"><option value="income">收入发票</option><option value="expense">支出发票</option></select></div>
+            <div class="mb-3"><label class="form-label">金额</label><input type="number" class="form-control" id="invoiceAmount" step="0.01" required></div>
+            <div class="mb-3"><label class="form-label">状态</label><select class="form-select" id="invoiceStatus"><option value="issued">已开票</option><option value="paid">已支付</option><option value="cancelled">已作废</option></select></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary" onclick="saveInvoice()">保存</button></div>
+    </div></div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<script src="/static/local/js/bootstrap.bundle.min.js"></script>
+<script>
+function getToken() { return localStorage.getItem('auth_token'); }
+function getAuthHeaders() { return { 'Authorization': 'Token ' + getToken() }; }
+function checkAuth() { if (!getToken()) { window.location.href = '/login/'; return false; } return true; }
+function escHtml(s) { if (!s && s !== 0) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function formatMoney(num) { if (!num && num !== 0) return '0.00'; return parseFloat(num).toLocaleString('zh-CN', {minimumFractionDigits:2,maximumFractionDigits:2}); }
+function showToast(msg, type) {
+    var c = document.getElementById('toastContainer');
+    var id = 'toast-' + Date.now();
+    var bg = type === 'success' ? 'bg-success' : 'bg-danger';
+    c.innerHTML += '<div id="'+id+'" class="toast align-items-center text-white '+bg+' border-0" role="alert"><div class="d-flex"><div class="toast-body">'+msg+'</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>';
+    new bootstrap.Toast(document.getElementById(id), {delay:3000}).show();
+}
+
+var allCompanies = [], allInvoices = [], monthlyReport = null;
+
+function loadAll() {
+    Promise.all([
+        fetch('/api/v1/finance/companies/', {headers: getAuthHeaders()}).then(r => r.json()).catch(() => []),
+        fetch('/api/v1/finance/invoices/', {headers: getAuthHeaders()}).then(r => r.json()).catch(() => []),
+        fetch('/api/v1/finance/monthly-report/?year=2026', {headers: getAuthHeaders()}).then(r => r.json()).catch(() => null)
+    ]).then(function([companies, invoices, report]) {
+        allCompanies = companies; allInvoices = invoices; monthlyReport = report;
+        document.getElementById('totalCompanies').textContent = companies.length;
+        document.getElementById('totalInvoices').textContent = invoices.length;
+        if (report) {
+            document.getElementById('monthBalance').textContent = '¥' + formatMoney(report.summary.total_balance);
+            document.getElementById('reportYear').textContent = report.year + '年';
+        }
+        renderCompanies(); renderInvoices(); renderReport();
+    }).catch(function() { showToast('数据加载失败', 'error'); });
+}
+
+function renderCompanies() {
+    var tb = document.getElementById('companiesTableBody');
+    if (!allCompanies.length) { tb.innerHTML = '<tr><td colspan="6" class="table-empty-state"><i class="bi bi-building table-empty-icon"></i><p class="table-empty-text">暂无公司，试试新建</p></td></tr>'; return; }
+    var html = '';
+    allCompanies.forEach(function(c) {
+        html += '<tr><td>'+c.id+'</td><td>'+escHtml(c.name)+'</td><td>'+escHtml(c.code||'-')+'</td><td><span class="badge '+(c.is_active?'badge-approved':'badge-draft')+'">'+(c.is_active?'启用':'禁用')+'</span></td><td>'+(c.created_at?c.created_at.substring(0,10):'-')+'</td><td><button class="btn btn-sm btn-outline-primary me-1" onclick="editCompany('+c.id+')"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" onclick="deleteCompany('+c.id+')"><i class="bi bi-trash"></i></button></td></tr>';
+    });
+    tb.innerHTML = html;
+}
+
+function renderInvoices() {
+    var tb = document.getElementById('invoicesTableBody');
+    if (!allInvoices.length) { tb.innerHTML = '<tr><td colspan="6" class="table-empty-state"><i class="bi bi-receipt table-empty-icon"></i><p class="table-empty-text">暂无发票</p></td></tr>'; return; }
+    var html = '';
+    allInvoices.forEach(function(i) {
+        html += '<tr><td>'+escHtml(i.invoice_no)+'</td><td><span class="badge '+(i.type==='income'?'badge-income':'badge-expense')+'">'+escHtml(i.type_display)+'</span></td><td>¥'+formatMoney(i.amount)+'</td><td><span class="badge badge-'+i.status+'">'+escHtml(i.status_display)+'</span></td><td>'+(i.issue_date||'-')+'</td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteInvoice('+i.id+')"><i class="bi bi-trash"></i></button></td></tr>';
+    });
+    tb.innerHTML = html;
+}
+
+function renderReport() {
+    var tb = document.getElementById('reportTableBody');
+    if (!monthlyReport) { tb.innerHTML = '<tr><td colspan="5" class="table-empty-state">加载失败</td></tr>'; return; }
+    var html = '';
+    monthlyReport.monthly_data.forEach(function(m) {
+        html += '<tr><td>'+m.month+'</td><td class="text-success">¥'+formatMoney(m.income)+'</td><td class="text-danger">¥'+formatMoney(m.expense)+'</td><td>¥'+formatMoney(m.balance)+'</td><td>¥'+formatMoney(m.cumulative_balance)+'</td></tr>';
+    });
+    tb.innerHTML = html;
+    document.getElementById('reportSummary').style.display = 'block';
+    document.getElementById('sumIncome').textContent = '¥' + formatMoney(monthlyReport.summary.total_income);
+    document.getElementById('sumExpense').textContent = '¥' + formatMoney(monthlyReport.summary.total_expense);
+    document.getElementById('sumBalance').textContent = '¥' + formatMoney(monthlyReport.summary.total_balance);
+}
+
+function showCompanyModal(id) {
+    document.getElementById('companyId').value = id || '';
+    document.getElementById('companyModalTitle').textContent = id ? '编辑公司' : '新建公司';
+    if (!id) { document.getElementById('companyName').value = ''; document.getElementById('companyCode').value = ''; }
+    new bootstrap.Modal(document.getElementById('companyModal')).show();
+}
+
+function editCompany(id) {
+    var c = allCompanies.find(function(x) { return x.id === id; });
+    if (!c) return;
+    document.getElementById('companyId').value = id;
+    document.getElementById('companyModalTitle').textContent = '编辑公司';
+    document.getElementById('companyName').value = c.name;
+    document.getElementById('companyCode').value = c.code || '';
+    new bootstrap.Modal(document.getElementById('companyModal')).show();
+}
+
+function saveCompany() {
+    var id = document.getElementById('companyId').value;
+    var name = document.getElementById('companyName').value.trim();
+    var code = document.getElementById('companyCode').value.trim();
+    if (!name) { showToast('请输入公司名称', 'error'); return; }
+    var payload = { name: name };
+    if (code) payload.code = code;
+    var url = '/api/v1/finance/companies/';
+    var method = 'POST';
+    if (id) { url += id + '/'; method = 'PUT'; }
+    fetch(url, {method: method, headers: Object.assign({'Content-Type':'application/json'}, getAuthHeaders()), body: JSON.stringify(payload)})
+    .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+    .then(function() {
+        showToast(id ? '更新成功' : '创建成功', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('companyModal')).hide();
+        loadAll();
+    }).catch(function() { showToast('保存失败', 'error'); });
+}
+
+function deleteCompany(id) {
+    if (!confirm('确定要删除该公司吗？')) return;
+    fetch('/api/v1/finance/companies/'+id+'/', {method: 'DELETE', headers: getAuthHeaders()})
+    .then(function(r) { if (!r.ok && r.status !== 204) throw new Error(); showToast('删除成功', 'success'); loadAll(); })
+    .catch(function() { showToast('删除失败', 'error'); });
+}
+
+function showInvoiceModal(id) {
+    document.getElementById('invoiceId').value = id || '';
+    document.getElementById('invoiceModalTitle').textContent = id ? '编辑发票' : '新建发票';
+    if (!id) { document.getElementById('invoiceNo').value = ''; document.getElementById('invoiceAmount').value = ''; }
+    new bootstrap.Modal(document.getElementById('invoiceModal')).show();
+}
+
+function saveInvoice() {
+    var id = document.getElementById('invoiceId').value;
+    var invoice_no = document.getElementById('invoiceNo').value.trim();
+    var type = document.getElementById('invoiceType').value;
+    var amount = parseFloat(document.getElementById('invoiceAmount').value);
+    var status = document.getElementById('invoiceStatus').value;
+    if (!invoice_no || !amount) { showToast('请填写必填项', 'error'); return; }
+    var payload = {invoice_no: invoice_no, type: type, amount: amount, status: status};
+    var url = '/api/v1/finance/invoices/';
+    var method = 'POST';
+    if (id) { url += id + '/'; method = 'PUT'; }
+    fetch(url, {method: method, headers: Object.assign({'Content-Type':'application/json'}, getAuthHeaders()), body: JSON.stringify(payload)})
+    .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+    .then(function() {
+        showToast(id ? '更新成功' : '创建成功', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('invoiceModal')).hide();
+        loadAll();
+    }).catch(function() { showToast('保存失败', 'error'); });
+}
+
+function deleteInvoice(id) {
+    if (!confirm('确定要删除该发票吗？')) return;
+    fetch('/api/v1/finance/invoices/'+id+'/', {method: 'DELETE', headers: getAuthHeaders()})
+    .then(function(r) { if (!r.ok && r.status !== 204) throw new Error(); showToast('删除成功', 'success'); loadAll(); })
+    .catch(function() { showToast('删除失败', 'error'); });
+}
+
+document.addEventListener('DOMContentLoaded', function() { if (checkAuth()) loadAll(); });
+</script>
+</body>
+</html>

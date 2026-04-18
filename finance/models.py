@@ -221,3 +221,108 @@ class Invoice(models.Model):
     
     def __str__(self):
         return self.invoice_number
+
+
+class Company(models.Model):
+    """公司模型 - GREEN版本"""
+    name = models.CharField(verbose_name='公司名称', max_length=100)
+    code = models.CharField(verbose_name='公司代码', max_length=20, unique=True)
+    is_active = models.BooleanField(verbose_name='是否启用', default=True)
+    created_at = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
+
+    class Meta:
+        db_table = 'finance_companies'
+        verbose_name = '公司'
+        verbose_name_plural = '公司管理'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class Salary(models.Model):
+    """工资单模型 - GREEN版本"""
+
+    STATUS_CHOICES = [
+        ('draft', '草稿'),
+        ('pending', '待审核'),
+        ('approved', '已批准'),
+        ('paid', '已发放'),
+    ]
+
+    company = models.ForeignKey(
+        Company,
+        verbose_name='公司',
+        on_delete=models.CASCADE,
+        related_name='salaries'
+    )
+    employee_id = models.CharField(verbose_name='员工ID', max_length=20)
+    salary_month = models.CharField(verbose_name='月份', max_length=7, help_text='格式：YYYY-MM')
+    department = models.CharField(verbose_name='部门', max_length=50, blank=True, default='')
+    position = models.CharField(verbose_name='职位', max_length=50, blank=True, default='')
+    base_salary = models.DecimalField(verbose_name='基本工资', max_digits=12, decimal_places=2, default=0)
+    overtime_hours = models.DecimalField(verbose_name='加班小时', max_digits=6, decimal_places=2, default=0)
+    overtime_rate = models.DecimalField(verbose_name='加班费率', max_digits=4, decimal_places=2, default=1.5)
+    overtime_pay = models.DecimalField(verbose_name='加班费', max_digits=12, decimal_places=2, default=0)
+    attendance_days = models.DecimalField(verbose_name='出勤天数', max_digits=5, decimal_places=1, default=0)
+    leave_days = models.DecimalField(verbose_name='请假天数', max_digits=5, decimal_places=1, default=0)
+    bonus = models.DecimalField(verbose_name='奖金', max_digits=12, decimal_places=2, default=0)
+    deduction_other = models.DecimalField(verbose_name='其他扣款', max_digits=12, decimal_places=2, default=0)
+    social_security = models.DecimalField(verbose_name='社保', max_digits=12, decimal_places=2, default=0)
+    housing_fund = models.DecimalField(verbose_name='公积金', max_digits=12, decimal_places=2, default=0)
+    tax_before = models.DecimalField(verbose_name='税前工资', max_digits=12, decimal_places=2, default=0)
+    tax = models.DecimalField(verbose_name='个税', max_digits=12, decimal_places=2, default=0)
+    net_salary = models.DecimalField(verbose_name='实发工资', max_digits=12, decimal_places=2, default=0)
+    status = models.CharField(verbose_name='状态', max_length=20, choices=STATUS_CHOICES, default='draft')
+    approver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name='审批人',
+        on_delete=models.SET_NULL,
+        related_name='approved_salaries',
+        blank=True,
+        null=True
+    )
+    approved_at = models.DateTimeField(verbose_name='审批时间', blank=True, null=True)
+    paid_at = models.DateTimeField(verbose_name='支付时间', blank=True, null=True)
+    remarks = models.TextField(verbose_name='备注', blank=True, default='')
+    created_at = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField(verbose_name='更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'finance_salaries'
+        verbose_name = '工资单'
+        verbose_name_plural = '工资管理'
+        ordering = ['-salary_month', 'company__name', 'employee_id']
+        unique_together = ['employee_id', 'salary_month']
+
+    def __str__(self):
+        return "%s - %s" % (self.employee_name, self.month)
+
+    def calculate_tax_and_net(self):
+        """计算个税和实发工资"""
+        # 应纳税所得额 = 基本工资 + 加班费 + 奖金 - 社保 - 公积金 - 5000
+        gross = float(self.base_salary) + float(self.overtime_pay or 0) + float(self.bonus or 0)
+        deductions = float(self.social_security or 0) + float(self.housing_fund or 0)
+        taxable_income = gross - deductions - 5000
+
+        if taxable_income <= 0:
+            self.tax = 0
+        else:
+            # 中国7级超额累进税率表
+            thresholds = [0, 3000, 12000, 25000, 35000, 55000, 80000]
+            rates = [3, 10, 20, 25, 30, 35, 45]
+            deductions_tbl = [0, 210, 1410, 2660, 4410, 7160, 15160]
+            for i in range(len(thresholds) - 1, -1, -1):
+                if taxable_income > thresholds[i]:
+                    self.tax = round(taxable_income * rates[i] / 100 - deductions_tbl[i], 2)
+                    break
+
+        other_ded = float(self.deduction_other or 0)
+        self.net_salary = round(
+            gross - deductions - float(self.tax or 0) - other_ded, 2
+        )
+        self.tax_before = gross
+
+    def save(self, *args, **kwargs):
+        self.calculate_tax_and_net()
+        super(Salary, self).save(*args, **kwargs)

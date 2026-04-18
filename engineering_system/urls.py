@@ -106,6 +106,9 @@ def suppliers_page(request):
 def finance_page(request):
     return render(request, 'finance.html')
 
+def companies_page(request):
+    return render(request, 'companies.html')
+
 def materials_page(request):
     return render(request, 'materials.html')
 
@@ -178,6 +181,7 @@ urlpatterns = [
     path('customers/', customers_page, name='customers'),
     path('suppliers/', suppliers_page, name='suppliers'),
     path('finance/', finance_page, name='finance'),
+    path('companies/', companies_page, name='companies'),
     path('materials/', materials_page, name='materials'),
     path('equipment/', equipment_page, name='equipment'),
     path('system/', system_page, name='system'),
@@ -210,6 +214,7 @@ urlpatterns = [
     path('api/v1/operation_logs/', include('operation_logs.urls')),
     path('api/v1/workers/', include('apps.workers.urls')),
     path('api/v1/attendance/', include('apps.gps_attendance.urls')),
+    path('api/v1/flow-engine/', include('apps.flow_engine.urls')),
     path('api/v1/search/', search_view, name='search'),
     path('metrics/', metrics, name='metrics'),
 ]
