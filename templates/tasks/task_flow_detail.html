@@ -1,0 +1,157 @@
+{% extends "tasks.html" %}
+{% load custom_filters %}
+
+{% block content %}
+<!-- Task Flow Detail Page -->
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h4><i class="bi bi-diagram-3 me-2"></i>任务流程详情</h4>
+            <div class="text-muted small mt-1">
+                <i class="bi bi-clock me-1"></i><span id="currentTime"></span>
+            </div>
+        </div>
+        <a href="{% url 'task_flow_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> 返回列表
+        </a>
+    </div>
+</div>
+
+{% if task %}
+<!-- Task Basic Info -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <h5 class="card-title">{{ task.name }}</h5>
+                <p class="text-muted mb-2">
+                    <i class="bi bi-folder me-1"></i>{{ task.project_name|default:"无项目" }}
+                </p>
+                <div class="d-flex gap-3">
+                    <span class="badge {% if task.is_overdue %}bg-danger{% elif task.status == 'completed' %}bg-success{% elif task.status == 'in_progress' %}bg-primary{% else %}bg-secondary{% endif %}">
+                        {{ task.get_status_display }}
+                    </span>
+                    <span class="text-muted">
+                        <i class="bi bi-person me-1"></i>{{ task.manager_display|default:"未分配" }}
+                    </span>
+                    <span class="text-muted">
+                        <i class="bi bi-calendar me-1"></i>{{ task.deadline|default:"未设置截止日期" }}
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="text-muted small">创建时间</div>
+                <div>{{ task.created_at|date:"Y-m-d H:i" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Flow Progress -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-diagram-2 me-2"></i>流程进度
+    </div>
+    <div class="card-body">
+        {% if stage_instances %}
+        <div class="flow-indicator">
+            {% for stage in stage_instances %}
+            <div class="flow-step {% if stage.status == 'completed' %}completed{% elif stage.status == 'in_progress' %}active{% else %}pending{% endif %}">
+                <div class="flow-step-icon">
+                    {% if stage.status == 'completed' %}
+                    <i class="bi bi-check"></i>
+                    {% elif stage.status == 'in_progress' %}
+                    <i class="bi bi-play-fill"></i>
+                    {% else %}
+                    <i class="bi bi-circle"></i>
+                    {% endif %}
+                </div>
+                <small>{{ stage.template_node.name }}</small>
+                {% if stage.status == 'in_progress' %}
+                <span class="badge bg-primary ms-2">当前</span>
+                {% endif %}
+            </div>
+            {% if forloop.last == False %}
+            <div class="flow-step-line {% if stage.status == 'completed' %}completed{% endif %}"></div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-muted text-center py-3">暂无流程信息</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Stage Activities Timeline -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-clock-history me-2"></i>流程历史记录
+    </div>
+    <div class="card-body p-0">
+        {% if stage_instances %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 180px;">进入时间</th>
+                        <th style="width: 180px;">离开时间</th>
+                        <th>阶段节点</th>
+                        <th>操作人</th>
+                        <th>动作</th>
+                        <th>备注</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stage in stage_instances %}
+                        {% if stage.activities %}
+                            {% for activity in stage.activities %}
+                            <tr>
+                                <td>{{ stage.entered_at|date:"Y-m-d H:i"|default:"-" }}</td>
+                                <td>{{ stage.exited_at|date:"Y-m-d H:i"|default:"-" }}</td>
+                                <td><span class="badge bg-light text-dark">{{ stage.template_node.name }}</span></td>
+                                <td>{{ activity.operator.username|default:"系统" }}</td>
+                                <td>
+                                    <span class="badge {% if activity.action_type == 'complete' %}bg-success{% elif activity.action_type == 'reject' %}bg-danger{% elif activity.action_type == 'transfer' %}bg-warning{% else %}bg-info{% endif %}">
+                                        {{ activity.get_action_type_display }}
+                                    </span>
+                                </td>
+                                <td>{{ activity.content|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            {% if forloop.first %}
+                            <tr>
+                                <td colspan="6" class="text-muted text-center py-3">暂无活动记录</td>
+                            </tr>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-muted text-center py-5">
+            <i class="bi bi-inbox" style="font-size: 48px; opacity: 0.4;"></i>
+            <p class="mt-2">暂无流程记录</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% else %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>未找到任务信息
+</div>
+{% endif %}
+
+<script>
+function updateTime() {
+    var now = new Date();
+    var opts = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+    var el = document.getElementById('currentTime');
+    if (el) el.textContent = now.toLocaleString('zh-CN', opts);
+}
+updateTime();
+setInterval(updateTime, 1000);
+</script>
+{% endblock %}

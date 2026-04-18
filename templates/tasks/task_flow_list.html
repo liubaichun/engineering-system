@@ -1,0 +1,153 @@
+{% extends "tasks.html" %}
+{% load custom_filters %}
+
+{% block content %}
+<!-- Task Flow List Page -->
+<div class="page-header mb-4">
+    <h4><i class="bi bi-flow-arrow me-2"></i>任务流程列表</h4>
+    <div class="text-muted small mt-1">
+        <i class="bi bi-clock me-1"></i><span id="currentTime"></span>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card p-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex gap-2 flex-wrap">
+            <select class="form-select form-select-sm" id="filterStatus" style="width:auto;" onchange="filterTasks()">
+                <option value="">全部状态</option>
+                <option value="pending">待处理</option>
+                <option value="in_progress">进行中</option>
+                <option value="completed">已完成</option>
+                <option value="overdue">已超期</option>
+            </select>
+            <select class="form-select form-select-sm" id="filterProject" style="width:auto;" onchange="filterTasks()">
+                <option value="">全部项目</option>
+                {% for project in projects %}
+                <option value="{{ project.id }}">{{ project.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="text-muted small">
+            共 <strong id="taskCount">{{ tasks|length }}</strong> 个任务
+        </div>
+    </div>
+</div>
+
+<!-- Tasks Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>任务名称</th>
+                        <th>所属项目</th>
+                        <th>当前阶段</th>
+                        <th>流程状态</th>
+                        <th>负责人</th>
+                        <th>截止日期</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="taskTableBody">
+                    {% if tasks %}
+                    {% for task in tasks %}
+                    <tr data-task-id="{{ task.id }}" data-status="{{ task.status }}">
+                        <td>
+                            <a href="{% url 'task_flow_detail' task.id %}" class="text-decoration-none">
+                                {{ task.name }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="text-muted">{{ task.project_name|default:"-" }}</span>
+                        </td>
+                        <td>
+                            {% if task.current_stage_name %}
+                            <span class="badge bg-primary">{{ task.current_stage_name }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if task.is_overdue %}
+                            <span class="badge bg-danger">已超期</span>
+                            {% elif task.status == 'completed' %}
+                            <span class="badge bg-success">已完成</span>
+                            {% elif task.status == 'in_progress' %}
+                            <span class="badge bg-primary">进行中</span>
+                            {% else %}
+                            <span class="badge bg-secondary">待处理</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ task.manager_display|default:"-" }}</td>
+                        <td class="{% if task.is_overdue %}text-danger{% endif %}">
+                            {{ task.deadline|default:"-" }}
+                        </td>
+                        <td>
+                            <a href="{% url 'task_flow_detail' task.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> 查看流程
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="table-empty-state">
+                            <i class="bi bi-inbox table-empty-icon"></i>
+                            <p class="table-empty-text">暂无任务</p>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Flow Legend -->
+<div class="card mt-3">
+    <div class="card-body py-2">
+        <div class="d-flex gap-4 align-items-center">
+            <span class="text-muted small">流程状态图例：</span>
+            <div class="d-flex gap-3">
+                <span><i class="bi bi-circle text-secondary me-1"></i>待处理</span>
+                <span><i class="bi bi-play-fill text-primary me-1"></i>进行中</span>
+                <span><i class="bi bi-check text-success me-1"></i>已完成</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateTime() {
+    var now = new Date();
+    var opts = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+    var el = document.getElementById('currentTime');
+    if (el) el.textContent = now.toLocaleString('zh-CN', opts);
+}
+updateTime();
+setInterval(updateTime, 1000);
+
+function filterTasks() {
+    var statusFilter = document.getElementById('filterStatus').value;
+    var projectFilter = document.getElementById('filterProject').value;
+    var rows = document.querySelectorAll('#taskTableBody tr[data-task-id]');
+    var count = 0;
+    
+    rows.forEach(function(row) {
+        var matchStatus = !statusFilter || row.dataset.status === statusFilter;
+        var matchProject = !projectFilter || true; // Add project filter logic if needed
+        
+        if (matchStatus && matchProject) {
+            row.style.display = '';
+            count++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    document.getElementById('taskCount').textContent = count;
+}
+</script>
+{% endblock %}
