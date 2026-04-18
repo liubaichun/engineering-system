@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Income, Expense, InvoiceNew, FinancialRecord, Invoice, Company, Salary
+from .models import Income, Expense, InvoiceNew, FinancialRecord, Invoice, Company, Salary, WageRecord
 from datetime import date as date_class
 
 
@@ -168,6 +168,33 @@ class CompanySerializer(serializers.ModelSerializer):
         model = Company
         fields = ['id', 'name', 'code', 'is_active', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+
+class WageRecordSerializer(serializers.ModelSerializer):
+    """工资单记录序列化器"""
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    company_name = serializers.CharField(source='company.name', read_only=True)
+    approver_name = serializers.CharField(source='approver.username', read_only=True, allow_null=True)
+    month_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WageRecord
+        fields = [
+            'id', 'company', 'company_name',
+            'employee_name', 'bank_card', 'department', 'position',
+            'base_salary', 'overtime_pay', 'bonus',
+            'social_insurance', 'housing_fund',
+            'leave_deduction', 'other_deductions',
+            'gross_salary', 'tax', 'net_salary',
+            'year', 'month', 'month_display',
+            'status', 'status_display',
+            'approver', 'approver_name', 'approved_at', 'paid_at',
+            'remarks', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'gross_salary', 'tax', 'net_salary', 'created_at', 'updated_at']
+
+    def get_month_display(self, obj):
+        return f"{obj.year}年{obj.month}月"
 
 
 class SalarySerializer(serializers.ModelSerializer):

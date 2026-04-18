@@ -10,6 +10,8 @@ router.register(r'records', views.FinancialRecordViewSet, basename='financial-re
 router.register(r'salary', views.SalaryViewSet, basename='salary')
 router.register(r'companies', views.CompanyViewSet, basename='company')
 router.register(r'monthly-report', views.MonthlyReportViewSet, basename='monthly-report')
+router.register(r'wages', views.WageRecordViewSet, basename='wage')
+router.register(r'wage-reports', views.WageReportViewSet, basename='wage-report')
 
 urlpatterns = [
     path('', include(router.urls)),
