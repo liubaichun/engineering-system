@@ -163,3 +163,219 @@ class AttachmentDownloadLog(models.Model):
 
     def __str__(self):
         return f"{self.attachment.name} - {self.action} by {self.user}"
+
+
+# =============================================================================
+# 文件管理模块扩展 - GREEN版本
+# =============================================================================
+
+class FileCategory(models.Model):
+    """文件分类 - GREEN版本
+    
+    支持的文件分类：
+    - company_system: 公司制度
+    - company_qualification: 公司资质
+    - company_contract: 公司合同
+    - project_photo: 项目照片
+    - invoice: 发票
+    - other: 其他
+    """
+    
+    CATEGORY_CHOICES = [
+        ('company_system', '公司制度'),
+        ('company_qualification', '公司资质'),
+        ('company_contract', '公司合同'),
+        ('project_photo', '项目照片'),
+        ('invoice', '发票'),
+        ('other', '其他'),
+    ]
+    
+    name = models.CharField(verbose_name='分类名称', max_length=100)
+    code = models.CharField(
+        verbose_name='分类代码', 
+        max_length=50, 
+        unique=True,
+        choices=CATEGORY_CHOICES
+    )
+    description = models.TextField(verbose_name='分类描述', blank=True, default='')
+    parent = models.ForeignKey(
+        'self', 
+        null=True, 
+        blank=True, 
+        on_delete=models.SET_NULL,
+        related_name='children',
+        verbose_name='父分类'
+    )
+    order = models.IntegerField(default=0, verbose_name='排序')
+    is_active = models.BooleanField(verbose_name='是否启用', default=True)
+    created_at = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
+    
+    class Meta:
+        db_table = 'file_categories'
+        verbose_name = '文件分类'
+        verbose_name_plural = '文件分类管理'
+        ordering = ['order', 'code']
+    
+    def __str__(self):
+        return self.name
+    
+    def get_display_name(self):
+        """获取分类的中文显示名称"""
+        for code, name in self.CATEGORY_CHOICES:
+            if code == self.code:
+                return name
+        return self.name
+
+
+class CompanyFile(models.Model):
+    """公司文件关联模型 - GREEN版本
+    
+    用于管理公司层面的文件，支持：
+    - 按公司分类文件
+    - 文件元数据：谁上传、什么时候上传
+    - 关联文件分类
+    """
+    
+    company = models.ForeignKey(
+        'finance.Company',
+        verbose_name='所属公司',
+        on_delete=models.CASCADE,
+        related_name='company_files',
+        null=True,
+        blank=True,
+        help_text='所属公司，为空则表示系统级文件'
+    )
+    attachment = models.ForeignKey(
+        Attachment,
+        verbose_name='附件',
+        on_delete=models.CASCADE,
+        related_name='company_files'
+    )
+    category = models.ForeignKey(
+        FileCategory,
+        verbose_name='文件分类',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='company_files'
+    )
+    title = models.CharField(verbose_name='文件标题', max_length=300, blank=True, default='')
+    description = models.TextField(verbose_name='文件描述', blank=True, default='')
+    
+    # 上传信息
+    uploader = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name='上传人',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='uploaded_company_files'
+    )
+    uploaded_at = models.DateTimeField(verbose_name='上传时间', auto_now_add=True)
+    
+    # 权限控制
+    is_public = models.BooleanField(
+        verbose_name='是否公开', 
+        default=False,
+        help_text='公开文件所有成员可见，否则仅限有权限成员'
+    )
+    is_active = models.BooleanField(verbose_name='是否启用', default=True)
+    
+    # 有效期
+    valid_from = models.DateTimeField(verbose_name='生效时间', null=True, blank=True)
+    valid_until = models.DateTimeField(verbose_name='失效时间', null=True, blank=True)
+    
+    # 审核状态
+    STATUS_CHOICES = [
+        ('pending', '待审核'),
+        ('approved', '已审核'),
+        ('rejected', '已拒绝'),
+    ]
+    status = models.CharField(
+        verbose_name='审核状态', 
+        max_length=20, 
+        choices=STATUS_CHOICES, 
+        default='approved'
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name='审核人',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_company_files'
+    )
+    reviewed_at = models.DateTimeField(verbose_name='审核时间', null=True, blank=True)
+    
+    # 标签
+    tags = models.CharField(
+        verbose_name='标签', 
+        max_length=500, 
+        blank=True, 
+        default='',
+        help_text='多个标签用逗号分隔'
+    )
+    
+    created_at = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField(verbose_name='更新时间', auto_now=True)
+    
+    class Meta:
+        db_table = 'company_files'
+        verbose_name = '公司文件'
+        verbose_name_plural = '公司文件管理'
+        ordering = ['-uploaded_at']
+        indexes = [
+            models.Index(fields=['company', 'category']),
+            models.Index(fields=['status', 'is_active']),
+            models.Index(fields=['-uploaded_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.title or self.attachment.name} ({self.category})"
+    
+    def save(self, *args, **kwargs):
+        # 如果标题为空，使用附件名称
+        if not self.title:
+            self.title = self.attachment.name
+        super().save(*args, **kwargs)
+
+
+class CompanyFileAccessLog(models.Model):
+    """公司文件访问日志"""
+    
+    ACTION_CHOICES = [
+        ('view', '查看'),
+        ('download', '下载'),
+        ('share', '分享'),
+        ('delete', '删除'),
+    ]
+    
+    company_file = models.ForeignKey(
+        CompanyFile,
+        verbose_name='公司文件',
+        on_delete=models.CASCADE,
+        related_name='access_logs'
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name='操作用户',
+        on_delete=models.SET_NULL,
+        null=True
+    )
+    action = models.CharField(
+        verbose_name='操作类型',
+        max_length=20,
+        choices=ACTION_CHOICES,
+        default='view'
+    )
+    ip_address = models.GenericIPAddressField(null=True, verbose_name='IP地址')
+    user_agent = models.CharField(max_length=500, blank=True, verbose_name='User-Agent')
+    accessed_at = models.DateTimeField(verbose_name='访问时间', auto_now_add=True)
+    
+    class Meta:
+        db_table = 'company_file_access_logs'
+        verbose_name = '文件访问日志'
+        verbose_name_plural = '文件访问日志'
+        ordering = ['-accessed_at']
+    
+    def __str__(self):
+        return f"{self.company_file} - {self.action} by {self.user}"
